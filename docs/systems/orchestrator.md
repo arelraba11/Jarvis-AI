@@ -14,6 +14,7 @@ client ([request flows](../architecture.md#request-flows)).
 - Read freely; every action it proposes goes into the approval queue ([permissions](permissions.md)).
 - Enforce loop limits: a max number of iterations and a cost cap for every run.
 - Pass a tool's error back to the model instead of failing the run.
+- Inject the account into tool calls ([account resolution](modules.md#accounts)).
 - Report live status of what it's doing (e.g. "קורא מיילים…") to the client.
 - Report every step to the `Tracer` ([infra](infra.md#observability)).
 - Provide the deterministic time and date tools (below), so the model never does date arithmetic itself.
@@ -25,8 +26,8 @@ prompt. It is written in [Phase 2](../plan/phase-2-core-cli.md), task 0.
 
 - Knowing clients, modules or providers by name. Tools come from the
   [tool registry](modules.md#tool-registry), models from the [model router](llm.md).
-- Deciding which tool levels need approval. The rule lives in [permissions](permissions.md); the
-  loop only calls the check.
+- Deciding which tool levels need approval. The loop calls the permission gate; the gate belongs
+  to [permissions](permissions.md).
 
 ### Time and date tools
 
@@ -52,8 +53,7 @@ prompt. It is written in [Phase 2](../plan/phase-2-core-cli.md), task 0.
 
 ## Decisions
 
-- ADR-0004 — Where tool permissions are enforced: in the orchestrator, from `ToolSpec` levels
-  (planned, Phase 2).
+- ADR-0004 — Where tool permissions are enforced: the loop calls the permission gate; the gate belongs to [permissions](permissions.md) (planned, Phase 2).
 
 ## Open questions
 

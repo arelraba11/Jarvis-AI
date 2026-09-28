@@ -1,7 +1,8 @@
 # Google module (Gmail + Calendar)
 
 `modules/google` is the MVP connector. It follows the general [module system](../systems/modules.md):
-loaded through `module.yaml`, every tool takes an `account_id`, `read` tools are free and `action`
+loaded through `module.yaml`, every tool takes an `account_id` (injected by the orchestrator, see
+[account resolution](../systems/modules.md#accounts)), `read` tools are free and `action`
 tools need [approval](../systems/permissions.md).
 
 ## Gmail
@@ -15,8 +16,8 @@ Read tools, all at `read` level:
 - `search_emails(account_id, query)`
 - `read_email(account_id, message_id)`
 - `read_thread(account_id, thread_id)`
-- `inbox_digest(account_id, date)`: lists the day's emails; the `writer` role summarizes what needs
-  a reply or an action.
+- `inbox_digest(account_id, date)`: returns a structured list of the day's emails; the `planner`
+  summarizes what needs a reply or an action.
 
 Rules:
 

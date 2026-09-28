@@ -16,6 +16,8 @@ observability, CI and updates. The processes themselves are in
   holds personal values, and is deep-merged over the defaults. Unknown keys are rejected.
 - Every field has a safe default, so the app and tests work without `local.yaml` (as in CI).
 - The profile has a `timezone` field, which every calendar and scheduling tool uses.
+- The profile has a `default_account_id` field, used when a request names no account
+  ([accounts](modules.md#accounts)).
 
 ### Secrets
 
@@ -46,13 +48,13 @@ observability, CI and updates. The processes themselves are in
 | Contract | Kind | Definition |
 |---|---|---|
 | `Settings` | settings | Root config model; includes `UserSettings`, `BudgetSettings` ([LLM](llm.md)), `AgentLimits` ([orchestrator](orchestrator.md)), `RoleModelConfig` ([LLM](llm.md)) |
-| `UserSettings` | settings | Personal values, including `timezone` |
+| `UserSettings` | settings | Personal values, including `timezone` and `default_account_id` |
 | `SecretStore` | Protocol | Keyring implementation, and an in-memory fake for tests |
 | `Tracer` | Protocol | Langfuse implementation and a no-op implementation |
 
 ## Config keys
 
-- The `Settings` tree above; `UserSettings.timezone`.
+- The `Settings` tree above; `UserSettings.timezone`, `UserSettings.default_account_id`.
 - Open question: key names beyond these are not specified yet.
 
 ## Decisions

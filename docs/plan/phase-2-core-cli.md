@@ -66,11 +66,14 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
    Tests: a scripted stdin run with `FakeProvider`.
 8. **Tool registry + tool calling in the loop.**
    - `ToolSpec` is built from a typed function signature, and every tool must declare a permission level.
+   - Injected parameters (`account_id`) are excluded from the schema the model sees
+     ([tool registry](../systems/modules.md#tool-registry)).
    - The loop runs model → tool calls → results → model, up to the max-iterations limit.
    - The CLI shows a status line during tool calls.
 
    Tests:
    - Schema generation.
+   - The generated schema has no `account_id`.
    - A tool without a level is rejected; a duplicate name is rejected.
    - One tool call.
    - A tool error is passed back to the model.
@@ -134,7 +137,7 @@ Typed into `jarvis chat`. "Det" = deterministic checks, "Judge" = rubric.
 
 ## ADRs to write
 - ADR-0003 — LLM layer: roles, `ModelRouter`, and the first `planner` provider.
-- ADR-0004 — Where tool permissions are enforced (in the orchestrator, from `ToolSpec` levels).
+- ADR-0004 — Where tool permissions are enforced: the loop calls the permission gate; the gate belongs to [permissions](../systems/permissions.md) (planned, Phase 2).
 - ADR-0005 — File-based stores until Postgres: the cost log in this phase, accounts in Phase 3
   ([storage](../systems/infra.md#storage)).
 - ADR-0006 — Langfuse deployment (Cloud or self-hosted). This closes an [open decision](../design.md#open-decisions).

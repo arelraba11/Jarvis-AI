@@ -23,13 +23,16 @@ link to the original email.
    Tests: a valid manifest loads; an invalid one fails clearly; a check that core has no import of
    `jarvis.modules.*`.
 2. **`Account` + `AccountStore`.** A file-based store per ADR-0005 (it carries `user_id` and
-   `account_id`). Every tool receives an `account_id`.
-   Tests: add, list and get an account; an unknown `account_id` fails.
+   `account_id`). Every tool receives an `account_id`; the orchestrator injects `default_account_id`
+   when the request names no account ([account resolution](../systems/modules.md#accounts)).
+   Tests: add, list and get an account; an unknown `account_id` fails; a tool call with no account
+   gets `default_account_id`.
 3. **Google OAuth.** `jarvis accounts add google` ([OAuth](../modules/google.md#oauth)).
    Tests: the flow and the refresh against fakes. Manual: a real sign-in.
 4. **Mail contracts + `FakeGmailClient`.** A fixture mailbox with realistic Hebrew emails:
    - The landlord thread.
    - A bill.
+   - A bank email from this week.
    - A newsletter.
    - Messages that need a reply.
    - Emails from Dani.
@@ -45,6 +48,7 @@ link to the original email.
 7. **Gmail read tools.** `search_emails`, `read_email`, `read_thread` ([Gmail](../modules/google.md#gmail)).
    Tests: each tool against `FakeGmailClient`; truncation.
 8. **Inbox summary.** `inbox_digest` ([Gmail](../modules/google.md#gmail)).
+   It returns a structured list; the `planner` writes the summary.
    Tests: against the fixture mailbox with `FakeProvider`, including that the right emails are selected.
 9. **Evals.** The acceptance examples below run against the fixture mailbox with the Phase 2
    grader, so they're reproducible. Then a manual pass on the real inbox.
@@ -56,7 +60,7 @@ replace with real cases from my inbox.
 
 | # | Request | Det | Judge |
 |---|---|---|---|
-| 1 | "מה חשוב במייל היום?" | `inbox_digest` called with today's date and the configured `account_id`; the answer mentions the needs-reply fixtures and not the newsletter | Short, Hebrew, grouped by what needs a reply or action |
+| 1 | "מה חשוב במייל היום?" | `inbox_digest` called with today's date, with `default_account_id` injected by the orchestrator (the model passes no account); the answer mentions the needs-reply fixtures and not the newsletter | Short, Hebrew, grouped by what needs a reply or action |
 | 2 | "מה סיכמנו עם בעל הדירה על החוזה?" | `search_emails` then `read_thread` on the landlord thread; the answer contains that thread's link | States only terms that appear in the thread |
 | 3 | "יש מיילים שמחכים לתשובה ממני?" | The answer lists exactly the needs-reply fixtures | Short list, one line per email |
 | 4 | "תמצא את המייל האחרון מדני ותסכם אותו" | `search_emails` filtered by Dani's address; `read_email` on the latest one | The summary is faithful, with no added details |

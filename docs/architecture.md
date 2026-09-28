@@ -39,7 +39,7 @@ flowchart LR
     ext["Gmail / Calendar APIs"]
 
     app --> api
-    voice --> orch
+    voice --> api
     phone -.-> api
     api --> orch
     orch --> reg
@@ -65,7 +65,8 @@ flowchart LR
 - **Chat request:** app → API → orchestrator. It loads memory, reads freely, and every action it
   proposes goes into the approval queue.
 - **Voice conversation:** the voice session runs the conversation, and every request that needs data
-  or an action goes to the orchestrator. So there is one brain.
+  or an action goes to the orchestrator through the API, like every other client. So there is one
+  brain. Where the session runs is [open](#open-questions).
 - **External event:** a new email or a scheduled task → event bus → classification by a local model.
   Only what passes a notification rule reaches me.
 - **Approval:** I approve in the app, and only then does the module run the tool.
@@ -121,7 +122,7 @@ src/jarvis/
   mac_agent/   Mac-dependent tools
 app/           Tauri and the TypeScript UI
 config/        YAML files
-evals/         eval sets (see systems/evals.md)
+evals/         eval cases, the source of truth (see systems/evals.md)
 docs/          design overview, architecture, systems/, modules/, plan/, adr/
 spikes/        one-off experiments, not product code
 infra/         launchd, docker-compose, CI
@@ -129,3 +130,8 @@ tests/
 ```
 
 Spike code backs the numbers in its ADR, which is why `spikes/` lives in the repo.
+
+## Open questions
+
+- **Where the voice session runs** (Phase 6): in the Tauri client or in `jarvis-core`. Until it is
+  decided, voice goes through the API like every other client ([voice](systems/voice.md)).

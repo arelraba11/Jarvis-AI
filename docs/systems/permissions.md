@@ -50,7 +50,7 @@ Voice approvals happen by click on screen, never by voice ([voice](voice.md)).
 
 ## Decisions
 
-- ADR-0004 — Where tool permissions are enforced (planned, Phase 2).
+- ADR-0004 — Where tool permissions are enforced: the loop calls the permission gate; the gate belongs to [permissions](permissions.md) (planned, Phase 2).
 - ADR-0010 — Handling external content, the prompt-injection defense (planned, Phase 3).
 
 ## Open questions
