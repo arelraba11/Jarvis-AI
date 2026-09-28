@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Jarvis is a personal AI assistant (Python service + later a Tauri/TypeScript app), built from scratch
 both for daily use and as a learning project: the agent loop, tools and memory are hand-written, no
-agent framework. `docs/design.md` (Hebrew) is the source of truth for architecture, decisions and the
-roadmap — read it before any design work. Record new architectural decisions as ADRs in `docs/adr/`.
+agent framework. `docs/design.md` (Hebrew) is the source of truth for architecture and decisions —
+read it before any design work. `docs/plan.md` is the only roadmap (phases, tasks, evals).
+Record new architectural decisions as ADRs in `docs/adr/`.
 
 ## Commands
 
