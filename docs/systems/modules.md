@@ -17,6 +17,8 @@ approval. Core discovers modules and tools without knowing their names.
 
 - A tool is a function with a decorator in the tool registry, or an external MCP server.
 - `ToolSpec` is built from a typed function signature; the JSON schema comes from Pydantic.
+- Parameters the orchestrator injects (`account_id`, see [account resolution](#accounts)) are
+  excluded from the JSON schema the model sees, e.g. via an `Annotated` marker.
 - Every tool must declare a permission level ([permissions](permissions.md)). A tool without a level
   is rejected, and so is a duplicate name.
 
@@ -72,6 +74,7 @@ loop ([orchestrator](orchestrator.md)).
 ## Open questions
 
 - How an MCP tool gets its `PermissionLevel`. Proposal: `ACTION` by default, until declared otherwise.
+- With multiple accounts, how the model picks one without seeing ids. Proposal: by account label or alias.
 
 ## Introduced in phase
 

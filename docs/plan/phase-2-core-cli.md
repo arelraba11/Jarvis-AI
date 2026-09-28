@@ -66,11 +66,14 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
    Tests: a scripted stdin run with `FakeProvider`.
 8. **Tool registry + tool calling in the loop.**
    - `ToolSpec` is built from a typed function signature, and every tool must declare a permission level.
+   - Injected parameters (`account_id`) are excluded from the schema the model sees
+     ([tool registry](../systems/modules.md#tool-registry)).
    - The loop runs model → tool calls → results → model, up to the max-iterations limit.
    - The CLI shows a status line during tool calls.
 
    Tests:
    - Schema generation.
+   - The generated schema has no `account_id`.
    - A tool without a level is rejected; a duplicate name is rejected.
    - One tool call.
    - A tool error is passed back to the model.
