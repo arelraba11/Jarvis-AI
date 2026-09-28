@@ -85,4 +85,5 @@ CI runs on Linux, so when Mac-only code arrives:
 - Every change comes with tests (write the test first for new behavior).
 - Ask before structural changes: new top-level dirs or packages, new dependencies, moving modules,
   changes to tooling/CI config.
+- Before merging a PR, confirm the PR head equals your local HEAD, and merge with --match-head-commit.
 - The user is learning: explain each decision briefly (the *why*, one or two sentences).
