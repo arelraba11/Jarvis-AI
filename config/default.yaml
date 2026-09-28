@@ -1,0 +1,5 @@
+# Repo defaults. Personal values (user details) go in config/local.yaml,
+# which is gitignored and merged over this file.
+
+budget:
+  daily_cap_usd: 3.0
