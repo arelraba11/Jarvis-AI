@@ -14,7 +14,8 @@ time, including against real models.
 - **Pass rule:** a case passes only if every deterministic check passes and the judge passes every
   rubric item.
 - **Runner:** executes each case through the [orchestrator](orchestrator.md) against the real
-  `planner`, and reports to Langfuse. Eval sets are kept in Langfuse Datasets.
+  `planner`, and reports to Langfuse.
+- **Source of truth:** the cases live in `evals/` in git. Langfuse receives run results only.
 - **Grader:** applies the deterministic checks to `RunResult` (tool calls and their arguments, facts
   in the answer). Then an LLM judge scores the answer text against the rubric, returning pass/fail
   and a one-line reason per item.

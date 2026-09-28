@@ -25,6 +25,9 @@ approval. Core discovers modules and tools without knowing their names.
 - Accounts live in an `accounts` table (file-based until Postgres, [storage](infra.md#storage)).
 - Every external tool takes an `account_id`. Adding a Google account means another OAuth and one
   more `accounts` row: data only.
+- **Account resolution:** when the request names no account, the orchestrator injects
+  `default_account_id` ([config](infra.md#config)) into the tool call. The model never handles
+  account ids.
 
 ### Connectors
 
@@ -68,7 +71,7 @@ loop ([orchestrator](orchestrator.md)).
 
 ## Open questions
 
-- None beyond the config question above.
+- How an MCP tool gets its `PermissionLevel`. Proposal: `ACTION` by default, until declared otherwise.
 
 ## Introduced in phase
 

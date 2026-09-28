@@ -13,6 +13,7 @@ everything else ([Phase 1](../plan/phase-1-voice-spike.md)).
   chat and voice.
 - **Alternative:** a pipeline of transcription, LLM and speech, all streaming. Cheaper and more
   controllable, but with noticeable latency. The voice provider interface lets config switch between the two.
+- **Not an LLM role:** voice goes only through `VoiceProvider`, never through the `ModelRouter` ([LLM](llm.md)).
 - **Approvals in voice:** Jarvis says what it proposes, and the card appears on screen. Approval is
   by click, so a wrong transcription can't run an action ([permissions](permissions.md)).
 - **Activation:** a keyboard shortcut opens a conversation. It closes by shortcut or after a long
@@ -45,6 +46,7 @@ All tentative until Phase 6 is detailed.
 ## Open questions
 
 - Voice approach: see [open decisions](../design.md#open-decisions); closed by Phase 1.
+- Where the voice session runs: see [architecture](../architecture.md#open-questions).
 
 ## Introduced in phase
 

@@ -134,7 +134,7 @@ Typed into `jarvis chat`. "Det" = deterministic checks, "Judge" = rubric.
 
 ## ADRs to write
 - ADR-0003 — LLM layer: roles, `ModelRouter`, and the first `planner` provider.
-- ADR-0004 — Where tool permissions are enforced (in the orchestrator, from `ToolSpec` levels).
+- ADR-0004 — Where tool permissions are enforced: the loop calls the permission gate; the gate belongs to [permissions](../systems/permissions.md) (planned, Phase 2).
 - ADR-0005 — File-based stores until Postgres: the cost log in this phase, accounts in Phase 3
   ([storage](../systems/infra.md#storage)).
 - ADR-0006 — Langfuse deployment (Cloud or self-hosted). This closes an [open decision](../design.md#open-decisions).
