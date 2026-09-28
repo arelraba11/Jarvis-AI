@@ -24,8 +24,8 @@ None, because the code is thrown away. The spike informs the
 1. **Candidates and scoring sheet** (day 1).
    - Candidates: 2–3 realtime models and one pipeline combination (transcription + LLM + speech).
    - Scores: 1–5 for comprehension and for accent.
-   - Measurements: latency is the time from the end of my speech to the first audio byte; cost per
-     minute is calculated from logged usage.
+   - Measurements: latency (primary and secondary) and cost per minute, as defined in the
+     [scoring sheet](../../spikes/voice/README.md#scoring-sheet).
    - Define "clear winner" *before* any runs, so the results can't bias the definition.
    - Output: `spikes/voice/README.md`.
 2. **Conversation script** (day 1). The fixed set of conversations (the acceptance examples below),
@@ -61,11 +61,12 @@ Spoken, not typed. Each is scored on every candidate using the sheet from task 1
 ## Risks and open questions
 - **Hebrew quality** may be weak for every realtime model. Then the pipeline wins, and the
   latency cost needs a number.
-- **Which candidates:** the specific models aren't chosen yet. They get picked in task 1,
-  against current prices.
-- **Where the spike lives** (open question): `spikes/voice/`, excluded from mypy and CI, or
-  outside the repo? Recommendation: `spikes/` in the repo, so the ADR can link to the code behind
-  the numbers ([repo layout](../architecture.md#repo-layout)).
+- **GPT-Live-1 Hebrew support is undocumented:** OpenAI's docs don't list Hebrew, so only the
+  spike can tell whether it qualifies.
+- ~~**Which candidates**~~ — closed: chosen in [`spikes/voice/README.md`](../../spikes/voice/README.md).
+- ~~**Where the spike lives**~~ — closed: `spikes/voice/` in the repo, excluded from mypy and pytest
+  (ruff still applies), so the ADR can link to the code behind the numbers
+  ([repo layout](../architecture.md#repo-layout)).
 
 ## ADRs to write
 - ADR-0001 — Src layout (backfill of the Phase 0 decision: packages live under `src/jarvis/`).

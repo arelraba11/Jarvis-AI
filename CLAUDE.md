@@ -48,7 +48,9 @@ CI (`.github/workflows/ci.yml`, ubuntu) runs `pre-commit run --all-files` and `p
 ## Architecture
 
 - Src layout: the packages `design.md` places at the repo root (`core/`, `llm/`, `modules/`,
-  `mac_agent/`) live under `src/jarvis/` on purpose. `app/`, `config/`, `evals/`, `infra/` stay at the root.
+  `mac_agent/`) live under `src/jarvis/` on purpose. `app/`, `config/`, `evals/`, `infra/`,
+  `spikes/` stay at the root. `spikes/` is throwaway code: excluded from mypy and pytest; ruff
+  still applies.
 - **Core knows only interfaces**, never names of clients, modules or providers. New connectors,
   tools, models and devices are added as modules or config, not by editing core. If an addition needs
   a core change, an extension point is missing — raise it instead of patching core.
