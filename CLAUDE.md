@@ -6,9 +6,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Jarvis is a personal AI assistant (Python service + later a Tauri/TypeScript app), built from scratch
 both for daily use and as a learning project: the agent loop, tools and memory are hand-written, no
-agent framework. `docs/design.md` (Hebrew) is the source of truth for architecture and decisions —
-read it before any design work. `docs/plan.md` is the only roadmap (phases, tasks, evals).
+agent framework. `docs/design.md` is the design overview (goals, decisions, open decisions) and links
+to one file per system. `docs/plan/README.md` is the only roadmap (phases, tasks, evals).
 Record new architectural decisions as ADRs in `docs/adr/`.
+
+## Docs routing
+
+Read only what the task needs (no `@imports`, so nothing loads by default):
+
+| Working on | Read |
+| --- | --- |
+| Design or cross-cutting changes | `docs/design.md`, `docs/architecture.md` |
+| The current phase's tasks | `docs/plan/README.md`, then `docs/plan/phase-N-*.md` |
+| Agent loop, time/date tools | `docs/systems/orchestrator.md` |
+| Tool levels, approvals, external content | `docs/systems/permissions.md` |
+| Models, roles, cost tracking | `docs/systems/llm.md` |
+| Voice | `docs/systems/voice.md` |
+| Session history, long-term memory | `docs/systems/memory.md` |
+| Event bus, notifications | `docs/systems/events.md` |
+| Module system, tool registry, accounts | `docs/systems/modules.md` |
+| Gmail, Calendar, Google OAuth | `docs/modules/google.md` |
+| Tauri app, phone | `docs/systems/app.md` |
+| Config, secrets, storage, tracing, CI | `docs/systems/infra.md` |
+| Evals | `docs/systems/evals.md` |
 
 ## Commands
 
