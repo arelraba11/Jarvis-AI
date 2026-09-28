@@ -1,233 +1,96 @@
-# Jarvis v2 — מסמך תכנון
+# Jarvis v2 — Design overview
 
 Sep 28, 2026 · @Arel Raba
 
-## מטרה ועקרונות
+This is the entry point to the design. Each system has its own file (see [Doc map](#doc-map)).
 
-Jarvis הוא עוזר AI אישי בסגנון הסרט: אני מדבר איתו בקול או בצ'אט, הוא מכיר את הכלים והחיים שלי, ומציע פעולות שאני מאשר. הוא רץ קודם על המק, ובהמשך יהיה זמין גם מהטלפון.
+## Goals and principles
 
-- **רואה הכול, עושה רק באישור:** קריאה חופשית של כל מה שמחובר. כל שינוי בעולם, כולל טיוטות ושמירה לזיכרון, רק אחרי אישור שלי.
-- **מערכת לטווח ארוך:** ליבה קבועה ומודולים נתיקים. כל חיבור, יכולת, מודל או מכשיר חדש נכנס כמודול או כהגדרה, בלי לשנות את הליבה.
-- **מוח אחד, הרבה פיות:** האפליקציה במק, הקול והטלפון הם לקוחות של אותו שירות, עם אותו זיכרון ואותן הרשאות.
-- **למידה:** לולאת סוכן, כלים וזיכרון נכתבים מאפס, כדי להבין כל שכבה.
+Jarvis is a personal AI assistant in the style of the movie: I talk to it by voice or chat, it knows
+my tools and my life, and it proposes actions that I approve. It runs on the Mac first, and later
+will be available from the phone too.
 
-## החלטות שהתקבלו
+- **Sees everything, acts only with approval:** free reading of everything connected. Every change
+  in the world, including drafts and saving to memory, happens only after my approval.
+- **A long-term system:** a fixed core and pluggable modules. Every new connector, capability, model
+  or device comes in as a module or as config, without changing the core.
+- **One brain, many mouths:** the Mac app, voice and the phone are clients of the same service, with
+  the same memory and the same permissions.
+- **Learning:** the agent loop, tools and memory are written from scratch, to understand every layer.
 
-| נושא | החלטה | השלכה על התכנון |
+## Decisions
+
+| Topic | Decision | Design impact |
 | --- | --- | --- |
-| איפה רץ | על המק עכשיו, 24/7 בהמשך | שירות רקע על המק. כשהמק סגור, Jarvis לא זמין |
-| ממשק במק | אפליקציית web עטופה (Tauri) | UI ב־TypeScript שישמש בהמשך גם כ־PWA בטלפון |
-| טלפון | בהמשך, בלי העדפה לערוץ | המוח חושף API אחד, והטלפון הוא עוד לקוח |
-| קול | שיחה חיה | מודל קולי בזמן אמת שמאציל למוח |
-| הפעלת קול | קיצור מקלדת | בלי האזנה קבועה למיקרופון |
-| שפה | עברית | איכות העברית בקול נבדקת לפני הכול |
-| הרשאות | קריאה חופשית, כל פעולה באישור | תור אישורים אחד לכל הפעולות |
-| זיכרון | מציע ואני מאשר | שמירה לזיכרון היא פעולה שדורשת אישור |
-| יוזמה | התראות על מה שחשוב | התראות macOS מהאפליקציה |
-| מודלים | שילוב מקומי ו־API | מקומי לסיווג ו־embeddings, API לתכנון, כתיבה וקול |
-| זיכרון המק | 24GB | מודלים מקומיים קטנים בלבד |
-| תקציב | נקבע אחרי מדידה | מעקב עלויות מהיום הראשון ותקרה יומית זמנית |
-| חשבונות גוגל | אחד עכשיו, יותר בעתיד | טבלת `accounts`, כל כלי מקבל `account_id` |
-| חיבורים | גוגל, אפל וקבצים, הודעות, דפדפן, ועוד | כל חיבור הוא מודול נפרד |
-| MVP | מייל ויומן | שאר החיבורים בשלבים הבאים |
-| שפת פיתוח | Python לשירות, TypeScript ל־UI | לולאת סוכן משלי, בלי framework |
+| Where it runs | On the Mac now, 24/7 later | A background service on the Mac. When the Mac is off, Jarvis is unavailable |
+| Mac interface | A wrapped web app (Tauri) | A TypeScript UI that will later also serve as a PWA on the phone |
+| Phone | Later, no channel preference | The brain exposes one API, and the phone is another client |
+| Voice | Live conversation | A realtime voice model that delegates to the brain |
+| Voice activation | Keyboard shortcut | No constant listening to the microphone |
+| Language | Hebrew | Hebrew voice quality is tested before everything else |
+| Permissions | Free reading, every action approved | One approval queue for all actions |
+| Memory | It proposes and I approve | Saving to memory is an action that needs approval |
+| Initiative | Notifications about what matters | macOS notifications from the app |
+| Models | A mix of local and API | Local for classification and embeddings, API for planning, writing and voice |
+| Mac memory | 24GB | Small local models only |
+| Budget | Set after measurement | Cost tracking from day one and a temporary daily cap |
+| Google accounts | One now, more in the future | An `accounts` table; every tool takes an `account_id` |
+| Connectors | Google, Apple and files, messages, browser, and more | Every connector is a separate module |
+| MVP | Email and calendar | The other connectors in later phases |
+| Dev language | Python for the service, TypeScript for the UI | My own agent loop, no framework |
 
-## ארכיטקטורה
+## MVP scope
 
-Jarvis הוא שירות רקע אחד על המק שחושף API. האפליקציה במק והטלפון בהמשך הם רק לקוחות שלו. קווים מקווקווים מסמנים רכיבים של שלבים מאוחרים.
+The MVP is email and calendar, in chat and voice, with approval for every action. It tests every core
+layer end to end: client, voice, orchestrator, tools, approvals, memory and events.
 
-&#91;embedded content: ארכיטקטורה · לקוחות, ליבה, מודולים וכלים\]
-
-- **בקשה בצ׳אט:** אפליקציה ← API ← אורקסטרטור. הוא טוען זיכרון, קורא מידע בחופשיות, וכל פעולה שהוא מציע נכנסת לתור האישורים.
-- **שיחה בקול:** סשן הקול מנהל את השיחה, וכל בקשה שצריכה מידע או פעולה מועברת לאורקסטרטור. כך יש מוח אחד.
-- **אירוע מבחוץ:** מייל חדש או משימה מתוזמנת ← event bus ← סיווג במודל מקומי. רק מה שעובר כלל התראה מגיע אליי.
-- **אישור:** אני מאשר באפליקציה, ורק אז המודול מפעיל את הכלי.
-
-## עקרונות הרחבה
-
-כל תוספת נכנסת דרך אחת מנקודות ההרחבה בטבלה, והליבה לא משתנה. אם תוספת דורשת לגעת בליבה, זה סימן שחסרה נקודת הרחבה.
-
-| מה מוסיפים | איך מוסיפים | מה משתנה |
+| Capability | Example | Result |
 | --- | --- | --- |
-| מכשיר (טלפון, שעון) | לקוח חדש שמדבר עם אותו API | קוד לקוח בלבד |
-| חיבור (הודעות, דפדפן, קבצים) | תיקיית מודול: `module.yaml` עם כלים, הנחיות, טריגרים ומרחב זיכרון | תיקייה חדשה |
-| כלי | פונקציה עם decorator ב־tool registry, או שרת MCP חיצוני | קובץ כלי או שורת קונפיג |
-| מודל או ספק, מקומי או API | מימוש של ממשק ה־provider, ומיפוי תפקיד ← מודל | קונפיג |
-| מודל קול | מימוש של ממשק ה־voice provider | קונפיג |
-| חשבון גוגל | OAuth נוסף, שורה בטבלת `accounts` | נתונים בלבד |
-| כלל התראה | שורה בקובץ הכללים: אירוע, תנאי, ערוץ | קונפיג |
-| משימה מתוזמנת | הגדרת cron במודול | קונפיג |
-| מעבר לענן או למחשב שרץ תמיד | אותו Docker Compose על מכונה אחרת. כלי המק נשארים כ־agent קטן על המק | פריסה בלבד |
+| Inbox summary | "מה חשוב במייל היום?" | A summary of what needs a reply or an action |
+| Mail search | "מה סיכמנו עם בעל הדירה על החוזה?" | An answer with a link to the original email |
+| Reply draft | "תענה לו שאני מאשר ליום ראשון" | An approval card with the draft, sent after approval |
+| Agenda | "מה יש לי מחר?" | A list of meetings and free slots |
+| Meeting management | "תזיז את הפגישה עם דני לחמישי" | An approval card, and the calendar changes after approval |
+| Notifications | An important email arrived, a meeting is coming up | A macOS notification with context |
+| Memory | "אני לא קובע פגישות לפני 10" | A memory proposal; after approval it affects future proposals |
 
-**כללי ברזל:**
+**Out of the MVP:** Apple apps, files, messages, browser, Drive, phone, a morning briefing, and any
+specific domain (job search, real estate, home).
 
-- הליבה לא מכירה שמות של לקוחות, מודולים או ספקים. היא מכירה רק ממשקים.
-- כל כלי מצהיר על רמת ההרשאה שלו: קריאה או פעולה. שכבת ההרשאות אוכפת, לא הכלי.
-- כל הגדרה שאפשר לשנות בלי קוד יושבת בקונפיג, עם ברירות מחדל.
-- כל טבלה כוללת `user_id`, וכל כלי חיצוני מקבל `account_id`.
-- כלים שתלויים במק (אפל, הודעות, קבצים) מופרדים מהשאר, כדי שאפשר יהיה להעביר את הליבה לענן בלי לשכתב אותם.
+## Doc map
 
-## ממשק
+| Topic | File |
+|---|---|
+| Components, flows, processes, extension points, iron rules, repo layout | [architecture.md](architecture.md) |
+| Agent loop, time and date tools | [systems/orchestrator.md](systems/orchestrator.md) |
+| Read/action levels, approval queue, external content | [systems/permissions.md](systems/permissions.md) |
+| Roles, providers, cost tracking | [systems/llm.md](systems/llm.md) |
+| Live voice | [systems/voice.md](systems/voice.md) |
+| Short- and long-term memory | [systems/memory.md](systems/memory.md) |
+| Event bus, importance, notifications | [systems/events.md](systems/events.md) |
+| Module system, tool registry, accounts, connectors | [systems/modules.md](systems/modules.md) |
+| Mac app, phone | [systems/app.md](systems/app.md) |
+| Config, secrets, storage, observability, CI | [systems/infra.md](systems/infra.md) |
+| Eval format, runner, grader | [systems/evals.md](systems/evals.md) |
+| Gmail and Calendar | [modules/google.md](modules/google.md) |
+| Architecture decision records | [adr/](adr/) |
 
-הממשק הראשון הוא אפליקציה במק שנפתחת בקיצור מקלדת, עם צ'אט ושיחה קולית באותו חלון.
+## Roadmap
 
-**אפליקציה במק (Tauri):**
+The roadmap, phase order and each phase's tasks are in [plan/README.md](plan/README.md). It is the
+only roadmap, and it is updated there.
 
-- **צ'אט:** היסטוריה, סטטוס חי של מה שהסוכן עושה ("קורא מיילים…"), ותשובות עם קישורים.
-- **קול:** כפתור או קיצור מקלדת פותחים שיחה חיה. אותה שיחה מופיעה גם כתמליל בצ'אט.
-- **תור אישורים:** כל פעולה מוצעת מופיעה ככרטיס עם מה בדיוק ייעשה, וכפתורים: אשר, ערוך, דחה.
-- **התראות:** התראות macOS על מה שחשוב. לחיצה פותחת את ההקשר באפליקציה.
-- **זיכרון:** מסך שמציג הצעות לזיכרון שממתינות לאישור, ואת כל מה שנשמר עם אפשרות מחיקה.
-- **UI:** ב־TypeScript, ורץ בתוך Tauri. אותו קוד יהיה בהמשך PWA לטלפון.
+## Open decisions
 
-**טלפון בהמשך:** אותו UI כ־PWA, שמתחבר לשירות במק דרך Tailscale, רשת פרטית בלי חשיפה לאינטרנט. הערוץ הסופי בטלפון (PWA, קיצור Siri או בוט) ייבחר כשנגיע לשלב הזה, וכל אחד מהם הוא רק לקוח נוסף של אותו API.
+The single list of open design decisions. Each closes with an ADR.
 
-## קול
-
-הקול הוא שיחה חיה בעברית, שבה המודל הקולי הוא "הפה והאוזניים" והאורקסטרטור הוא המוח. זה הרכיב הכי מסוכן טכנית, ולכן הוא נבדק לפני כל השאר.
-
-- **מבנה:** מודל קולי בזמן אמת (speech-to-speech) מנהל את השיחה, ויש לו כלי אחד: להעביר בקשה לאורקסטרטור. ככה הכלים, הזיכרון וההרשאות זהים בצ'אט ובקול.
-- **חלופה:** צינור של תמלול, LLM והקראה, הכול ב־streaming. זול יותר ועם יותר שליטה, אבל עם השהייה מורגשת. ממשק ה־voice provider מאפשר להחליף בין השניים בקונפיג.
-- **אישורים בקול:** Jarvis אומר מה הוא מציע, והכרטיס מופיע במסך. האישור בלחיצה, כדי שתמלול שגוי לא יבצע פעולה.
-- **הפעלה:** קיצור מקלדת פותח שיחה. היא נסגרת בקיצור או אחרי שקט ממושך, כדי לא לשלם על דקות ריקות.
-- **בדיקה ראשונה:** השוואה של 2–3 מודלים קוליים בזמן אמת על שיחות אמיתיות בעברית: הבנה, מבטא, השהייה ועלות לדקה. התוצאה קובעת את הבחירה.
-
-## שכבת מודלים
-
-כל קריאה למודל עוברת דרך ממשק אחד, והקוד מבקש תפקיד ולא מודל. משימות פשוטות רצות מקומית על ה־M4 Pro, והשאר ב־API.
-
-| תפקיד | שימוש | איפה |
-| --- | --- | --- |
-| `planner` | האורקסטרטור: הבנת בקשה ובחירת כלים | API, מודל חזק |
-| `writer` | טיוטות מייל וסיכומים | API |
-| `voice` | שיחה חיה | API, מודל קולי בזמן אמת |
-| `classifier` | סיווג מיילים ואירועים לחשיבות | מקומי |
-| `embeddings` | חיפוש סמנטי בזיכרון ובמיילים | מקומי, מודל רב-לשוני |
-| `memory` | הצעת עובדות לזיכרון | מקומי או API זול |
-
-- **מקומי:** Ollama או MLX, רצים native ולא בתוך Docker (כדי לקבל גישה ל־GPU). עם 24GB, רק מודלים קטנים.
-- **עברית:** מודלים מקומיים קטנים חלשים יותר בעברית. כל תפקיד מקומי נבדק מול סט eval, ועובר ל־API אם הוא לא עומד ברף.
-- **עלויות:** כל קריאה נרשמת עם עלות, תפקיד ומודול. התקציב ייקבע אחרי שבועיים של מדידה, ועד אז יש תקרה יומית זמנית בקונפיג.
-- **בחירת מודלים:** סט eval של 20–30 דוגמאות אמיתיות בעברית לכל תפקיד, בתחילת הפיתוח ומול מחירים עדכניים.
-
-## הרשאות ואישורים
-
-Jarvis קורא חופשי, וכל דבר שמשנה את העולם עובר דרך תור אישורים אחד. אין פעולה אוטומטית, כולל טיוטות ושמירה לזיכרון.
-
-| רמה | דוגמאות | התנהגות |
-| --- | --- | --- |
-| קריאה | לקרוא מיילים, יומן, קבצים, הודעות והיסטוריית דפדפן | חופשי |
-| פעולה | ליצור טיוטה, לשלוח מייל, לקבוע או לבטל פגישה, לשמור לזיכרון, למחוק | כרטיס בתור האישורים, מתבצע רק אחרי אישור |
-
-- **כרטיס אישור:** מה ייעשה, על מה (מייל, פגישה, קובץ), והתוכן המלא. אפשר לערוך לפני אישור.
-- **אישור ב־CLI:** עד שהאפליקציה קיימת, אותו כרטיס מוצג בטרמינל ומאושר ב־y / e / n (אשר, ערוך, דחה).
-- **אכיפה בליבה:** כל כלי מצהיר על הרמה שלו, ושכבת ההרשאות חוסמת כל כלי "פעולה" שאין לו אישור. המודל לא יכול לעקוף את זה.
-- **Prompt injection:** מיילים, הודעות ודפי אינטרנט מסומנים כמידע חיצוני. הוראה שמגיעה מתוכם לא מבוצעת לעולם.
-- **הרשאות macOS:** Full Disk Access (הודעות), Automation (אפליקציות אפל), מיקרופון, והתראות. כל אחת ניתנת רק כשהמודול שצריך אותה נכנס.
-- **סודות:** טוקני OAuth ומפתחות API ב־macOS Keychain, לא בקוד ולא בקבצי env.
-- **ביקורת:** כל אישור נרשם עם מה אושר ומתי.
-
-## זיכרון
-
-Jarvis מציע מה לזכור, ורק מה שאני מאשר נשמר. הכול יושב ב־Postgres מקומי עם pgvector.
-
-- **זיכרון קצר:** היסטוריית ה־session הנוכחי, עם סיכום אוטומטי כשהשיחה מתארכת. session נסגר אחרי זמן שקט שמוגדר בקונפיג.
-- **הצעות:** בסוף session, מודל זול מחלץ עובדות והעדפות ומציע אותן במסך הזיכרון. הצעה שלא אושרה לא משפיעה על כלום.
-- **זיכרון ארוך:** כל פריט מאושר נשמר עם `user_id`, מרחב (`personal`, `mail`, ובהמשך מרחב לכל מודול), מקור, תאריך ו־embedding.
-- **שליפה:** לפני כל תשובה, חיפוש סמנטי במרחבים של המודול הפעיל ובמרחב האישי.
-- **עדכון ומחיקה:** עובדה שמתעדכנת מוצעת כהחלפה של הישנה, לא כשכפול. מחיקה היא מחיקה מלאה.
-- **מה לא נכנס לזיכרון:** מידע שאפשר לשלוף מחדש (מיילים, אירועים ביומן). הזיכרון מחזיק עובדות עליי, לא עותק של הנתונים.
-
-## אינטגרציות
-
-כל חיבור הוא מודול נפרד, עם כלי קריאה חופשיים וכלי פעולה שעוברים אישור. ה־MVP מתחיל בגוגל, והשאר נכנסים לפי הסדר בטבלה.
-
-| חיבור | קריאה | פעולה (באישור) | איך מתחברים | שלב |
-| --- | --- | --- | --- | --- |
-| Gmail | חיפוש, קריאה, סיווג מיילים נכנסים | טיוטה, שליחה, תווית, ארכיון | Gmail API, OAuth, watch עם Pub/Sub ב־pull | MVP |
-| Google Calendar | אירועים, זמינות | קביעה, הזזה, ביטול | Calendar API | MVP |
-| אפליקציות אפל | Notes, Reminders, Contacts | יצירת פתק או תזכורת | EventKit ו־AppleScript | אחרי MVP |
-| קבצים במק | חיפוש וקריאה, סיכום מסמכים | העברה, שינוי שם | Spotlight (`mdfind`) וקריאה ישירה | אחרי MVP |
-| הודעות | iMessage ו־SMS: מה חדש, מי מחכה לתשובה | שליחה | מסד הנתונים המקומי של Messages, ו־AppleScript לשליחה | אחרי MVP |
-| דפדפן | היסטוריה, טאבים פתוחים, תוכן דף | פעולות באתרים | קריאת ההיסטוריה המקומית, ו־Playwright לפעולות | אחרי MVP |
-| Google Drive, Docs, Sheets | חיפוש וקריאה | יצירה ועריכה | Drive, Docs ו־Sheets API | אחרי MVP |
-
-**וואטסאפ:** אין API רשמי לחשבון פרטי, והספריות הלא רשמיות מסכנות את המספר. נשאר מחוץ לתוכנית, עד שיהיה פתרון רשמי או מספר עסקי.
-
-## היקף ה־MVP
-
-ה־MVP הוא מייל ויומן, בצ'אט ובקול, עם אישור לכל פעולה. הוא בודק מקצה לקצה את כל שכבות הליבה: לקוח, קול, אורקסטרטור, כלים, אישורים, זיכרון ואירועים.
-
-| יכולת | דוגמה | מה יוצא |
-| --- | --- | --- |
-| סיכום תיבת הדואר | "מה חשוב במייל היום?" | סיכום של מה שדורש תשובה או פעולה |
-| חיפוש במייל | "מה סיכמנו עם בעל הדירה על החוזה?" | תשובה עם קישור למייל המקורי |
-| טיוטת תשובה | "תענה לו שאני מאשר ליום ראשון" | כרטיס אישור עם הטיוטה, ושליחה אחרי אישור |
-| סדר יום | "מה יש לי מחר?" | רשימת פגישות וחלונות פנויים |
-| ניהול פגישות | "תזיז את הפגישה עם דני לחמישי" | כרטיס אישור, ושינוי ביומן אחרי אישור |
-| התראות | מייל חשוב הגיע, פגישה מתקרבת | התראת macOS עם הקשר |
-| זיכרון | "אני לא קובע פגישות לפני 10" | הצעה לזיכרון, ואחרי אישור היא משפיעה על הצעות עתידיות |
-
-**מה נחשב חשוב:** כללים בקונפיג (שולחים מסוימים, מילות מפתח) ועוד סיווג של המודל המקומי. הרף מכויל לפי השבועות הראשונים.
-
-**מחוץ ל־MVP:** אפליקציות אפל, קבצים, הודעות, דפדפן, דרייב, טלפון, תדריך בוקר, וכל תחום ספציפי (חיפוש עבודה, נדל"ן, בית).
-
-## תשתית, אמינות ו־observability
-
-הכול רץ על המק כשירותי רקע שעולים לבד, והמבנה מוכן להעברת הליבה למכונה שרצה תמיד בלי שכתוב.
-
-**רכיבים על המק:**
-
-- **`jarvis-core`:** שירות Python עם ה־API, האורקסטרטור, ה־event bus וה־scheduler. רץ דרך `launchd` ועולה עם ההתחברות.
-- **`mac-agent`:** תהליך נפרד שמחזיק את הכלים שתלויים במק (אפל, הודעות, קבצים). כשהליבה תעבור לענן, הוא נשאר על המק ומתחבר אליה.
-- **Postgres עם pgvector:** ב־Docker (OrbStack) או מ־Homebrew.
-- **מודלים מקומיים:** Ollama או MLX, native.
-- **האפליקציה:** Tauri, עם קיצור מקלדת גלובלי.
-
-**אמינות:**
-
-- **שינה ויקיצה:** כשהמק מתעורר, Jarvis מסנכרן את מה שפוספס (Gmail דרך history ID), ולא מסתמך רק על אירועים שהגיעו בזמן אמת.
-- **Gmail watch:** פג אחרי 7 ימים. משימה מתוזמנת מחדשת אותו כל יום.
-- **OAuth של גוגל:** אפליקציה במצב Testing מקבלת refresh tokens שפגים אחרי 7 ימים. לכן עוברים ל־Production לשימוש אישי, ומוודאים מול התיעוד העדכני.
-- **Idempotency:** לכל אירוע יש מזהה, ואירוע שכבר טופל נזרק.
-- **גבולות ללולאת הסוכן:** מקסימום איטרציות ותקרת עלות לכל ריצה.
-- **אזור זמן:** שדה `timezone` בפרופיל, שכל כלי של יומן ותזמון משתמש בו.
-- **גיבויים:** dump יומי ומוצפן של Postgres לאחסון חיצוני.
-
-**Observability ופיתוח:**
-
-- **Langfuse:** כל ריצה מתועדת: הנחיות, קריאות כלים, מודל, זמן ועלות.
-- **Git ו־GitHub Actions:** טסטים בכל push. ה־evals רצים רק כשמשתנות הנחיות או שכבת המודלים, כדי לא לשרוף תקציב.
-- **עדכון:** pull והפעלה מחדש של השירותים, בסקריפט אחד.
-
-**מבנה ריפו מוצע:**
-
-```
-jarvis/
-  core/        API, אורקסטרטור, אישורים, זיכרון, אירועים
-  llm/         providers, מיפוי תפקידים, voice providers
-  modules/     google/ ב־MVP. apple/, files/, messages/, browser/ בהמשך
-  mac_agent/   כלים שתלויים במק
-  app/         Tauri ו־UI ב־TypeScript
-  config/      קבצי YAML
-  evals/       סטים ב־Langfuse Datasets
-  docs/        מסמך תכנון, תוכנית עבודה, מפרט התנהגות ו־ADRs
-  spikes/      ניסויים חד־פעמיים, לא קוד מוצר
-  infra/       launchd, docker-compose, CI
-  tests/
-```
-
-## מפת דרכים
-
-מפת הדרכים, סדר השלבים והמשימות של כל שלב נמצאים ב־[`plan.md`](plan.md). זו מפת הדרכים היחידה, והיא מתעדכנת שם.
-
-## החלטות פתוחות
-
-- [ ] **גישת הקול:** מודל בזמן אמת או צינור של תמלול, LLM והקראה. נסגר בשלב 1.
-- [ ] **תקציב חודשי:** נקבע אחרי שבועיים של מדידה.
-- [ ] **מודלים לכל תפקיד:** מקומי או API, לפי סט ה־eval בעברית.
-- [ ] **Langfuse:** Cloud (פשוט, אבל תוכן המיילים יוצא מהמק) או self-hosted על המק (פרטי, אבל עוד שירות לתחזק).
-- [ ] **Postgres:** ב־Docker או מ־Homebrew.
-- [ ] **מתי ואיך 24/7:** VM בענן או מחשב שרץ תמיד (למשל Mac mini). נפתח כשנחבר את הטלפון.
-- [ ] **ערוץ בטלפון:** PWA, קיצור Siri או בוט.
-- [ ] **מה נחשב מייל חשוב:** הכללים הראשונים (שולחים ומילות מפתח) לפני שלב 6.
+| Decision | Options | Details | Closes |
+|---|---|---|---|
+| Voice approach | Realtime model, or a transcription → LLM → speech pipeline | [voice](systems/voice.md) | Phase 1 (ADR-0002) |
+| Monthly budget | — | [LLM](systems/llm.md) | After two weeks of measurement |
+| Models per role | Local or API, by the Hebrew eval set | [LLM](systems/llm.md) | — |
+| Langfuse | Cloud (simple, but email content leaves the Mac) or self-hosted on the Mac (private, but one more service to maintain) | [infra](systems/infra.md#observability) | Before Phase 3 (ADR-0006) |
+| Postgres | Docker or Homebrew | [infra](systems/infra.md#storage) | — |
+| When and how 24/7 | A cloud VM or an always-on computer (e.g. a Mac mini) | [infra](systems/infra.md#ci-and-updates) | Opened when the phone is connected |
+| Phone channel | PWA, Siri shortcut or bot | [app](systems/app.md) | — |
+| What counts as an important email | The first rules (senders and keywords) | [events](systems/events.md) | Before the events phase (Phase 8) |
