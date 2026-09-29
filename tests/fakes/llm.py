@@ -7,7 +7,9 @@ The rule it enforces, for every thinking block in a request:
   blocks of its own message) must be unchanged since the block was produced. Thinking blocks are
   not part of that prefix, so removing one does not change it.
 - Thinking blocks may be removed from the start, from the end, or all of them. A gap in the middle
-  fails: each block records the one before it, and that one must still be the block before it.
+  fails: each block records the thinking blocks kept before it when it was produced, and the ones
+  before it now must be that run or its tail. So does putting back a removed block: the blocks
+  produced while it was gone never recorded it.
 - Every other block (text, tool calls, results, `OpaqueBlock`) is part of the prefix.
 """
 
@@ -34,7 +36,7 @@ class _Produced:
     system: str
     tools: _Snapshot
     prefix: _Snapshot
-    previous: str | None  # the key of the thinking block before this one, if any
+    before: tuple[str, ...]  # the keys of the thinking blocks kept before it, in order
 
 
 class FakeProvider:
@@ -55,7 +57,7 @@ class FakeProvider:
         return response
 
     def _check_prefix(self, request: LLMRequest) -> None:
-        previous: str | None = None
+        kept: tuple[str, ...] = ()
         for m, message in enumerate(request.messages):
             for b, block in enumerate(message.content):
                 if not isinstance(block, ThinkingBlock):
@@ -68,7 +70,12 @@ class FakeProvider:
                         "FakeProvider, or edited since"
                     )
                 where = f"thinking block at messages[{m}].content[{b}]"
-                if previous is not None and produced.previous != previous:
+                # Removing blocks from the start leaves a tail of the recorded run.
+                if kept != produced.before[len(produced.before) - len(kept) :]:
+                    if set(kept) - set(produced.before):
+                        raise PrefixMismatchError(
+                            f"{where}: a thinking block removed before it was produced was put back"
+                        )
                     raise PrefixMismatchError(f"{where}: the thinking block before it was removed")
                 if request.system != produced.system:
                     raise PrefixMismatchError(f"{where}: the system prompt changed")
@@ -76,13 +83,10 @@ class FakeProvider:
                     raise PrefixMismatchError(f"{where}: the tools changed")
                 if _prefix(request.messages[:m], message.content[:b]) != produced.prefix:
                     raise PrefixMismatchError(f"{where}: the history before it changed")
-                previous = key
+                kept += (key,)
 
     def _record(self, request: LLMRequest, reply: Message) -> None:
-        previous = next(
-            (_key(b) for m in reversed(request.messages) for b in reversed(_thinking(m.content))),
-            None,
-        )
+        before = tuple(_key(b) for m in request.messages for b in _thinking(m.content))
         tools = _tools(request.tools)
         for b, block in enumerate(reply.content):
             if isinstance(block, ThinkingBlock):
@@ -90,9 +94,9 @@ class FakeProvider:
                     system=request.system,
                     tools=tools,
                     prefix=_prefix(request.messages, reply.content[:b]),
-                    previous=previous,
+                    before=before,
                 )
-                previous = _key(block)
+                before += (_key(block),)
 
 
 def _key(block: ThinkingBlock) -> str:

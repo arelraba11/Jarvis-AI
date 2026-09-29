@@ -1,14 +1,16 @@
 """Live smoke tests against the real Anthropic API (Phase 2 task 5).
 
-Excluded by default and in CI (`-m "not live"` in pyproject.toml). Run by hand on the Mac:
+Two opt-ins, so no other `-m` expression can run them by accident: the `live` marker (excluded
+by default and in CI, `-m "not live"` in pyproject.toml) and JARVIS_LIVE=1. Run by hand on the Mac:
 
-    uv run pytest -m live -s
+    JARVIS_LIVE=1 uv run pytest -m live -s
 
 They read the API key from the real Keychain (service `jarvis`, account `anthropic`) and spend
 a few cents. On the first read macOS asks for Keychain access: choose "Always Allow".
 """
 
 import asyncio
+import os
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -27,7 +29,13 @@ from jarvis.llm.contracts import (
     ThinkingBlock,
 )
 
-pytestmark = pytest.mark.live
+pytestmark = [
+    pytest.mark.live,
+    pytest.mark.skipif(
+        os.environ.get("JARVIS_LIVE") != "1",
+        reason="live API test: set JARVIS_LIVE=1 (reads the real Keychain, costs money)",
+    ),
+]
 
 # The planner's real system prompt: well above Sonnet 5.5's 512-token minimum cacheable prefix.
 SYSTEM = (Path(__file__).parents[1] / "docs" / "behavior.md").read_text(encoding="utf-8")

@@ -37,7 +37,7 @@ All tooling runs through uv (Python 3.13).
 
 ```bash
 uv sync --locked                          # install exactly what uv.lock pins
-uv run pytest                             # all tests
+uv run pytest                             # all tests except live API ones (JARVIS_LIVE=1 uv run pytest -m live)
 uv run pytest tests/test_smoke.py::test_package_imports   # single test
 uv run ruff check . && uv run ruff format --check .
 uv run mypy                               # strict; checks src/, tests/ and .claude/hooks/

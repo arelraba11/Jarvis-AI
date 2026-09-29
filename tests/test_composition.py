@@ -24,15 +24,33 @@ def test_anthropic_is_a_registered_provider() -> None:
     assert set(provider_factories(FakeSecretStore())) == {"anthropic"}
 
 
-def _imports(path: Path) -> set[str]:
+def _imports_of(source: str, package: str) -> set[str]:
+    """Absolute names `source` imports; relative imports start from `package`."""
+    parts = package.split(".")
     names: set[str] = set()
-    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+    for node in ast.walk(ast.parse(source)):
         if isinstance(node, ast.Import):
             names.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            names.add(node.module)
-            names.update(f"{node.module}.{alias.name}" for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            base = parts[: len(parts) - node.level + 1] if node.level else []
+            prefix = ".".join([*base, *([node.module] if node.module else [])])
+            names.add(prefix)
+            names.update(f"{prefix}.{alias.name}" for alias in node.names)
     return names
+
+
+def _imports(path: Path) -> set[str]:
+    # A module's package is its directory; an __init__.py is its own package's code.
+    package = ".".join(["jarvis", *path.relative_to(SRC).parent.parts])
+    return _imports_of(path.read_text(encoding="utf-8"), package)
+
+
+def test_relative_imports_are_resolved() -> None:
+    # Otherwise `from .anthropic_provider import ...` would slip past the checks below.
+    source = "from .anthropic_provider import f\nfrom . import anthropic_provider\n"
+    names = _imports_of(source, "jarvis.llm")
+    assert "jarvis.llm.anthropic_provider" in names
+    assert "jarvis.llm.anthropic_provider.f" in names
 
 
 def test_only_the_composition_root_imports_concrete_providers() -> None:

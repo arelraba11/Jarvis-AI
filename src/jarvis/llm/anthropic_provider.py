@@ -10,7 +10,6 @@ from collections.abc import Callable
 from typing import Final, cast, get_args
 
 import anthropic
-import httpx2
 from anthropic.types.beta import (
     BetaContentBlockParam,
     BetaMessage,
@@ -70,7 +69,7 @@ _ARGUMENTS: Final = TypeAdapter(dict[str, JsonValue])
 
 
 def anthropic_factory(
-    secrets: SecretStore, *, http_client: httpx2.AsyncClient | None = None
+    secrets: SecretStore, *, http_client: anthropic.DefaultAsyncHttpxClient | None = None
 ) -> Callable[[RoleModelConfig], "AnthropicProvider"]:
     """The `anthropic` factory for `ModelRouter`. `http_client` lets tests fake the network."""
 
@@ -85,7 +84,7 @@ def anthropic_factory(
         client = anthropic.AsyncAnthropic(
             api_key=secrets.get(SECRET_NAME),
             base_url=BASE_URL,
-            timeout=httpx2.Timeout(TIMEOUT_S, connect=CONNECT_TIMEOUT_S),
+            timeout=anthropic.Timeout(TIMEOUT_S, connect=CONNECT_TIMEOUT_S),
             max_retries=MAX_RETRIES,
             http_client=http_client,
         )
@@ -121,36 +120,46 @@ class AnthropicProvider:
                 tool_choice={"type": "auto"} if request.tools else anthropic.omit,
                 messages=[_message(m) for m in request.messages],
             )
-            message = await raw.parse()
-            body: object = raw.http_response.json()
         except anthropic.APIError as e:
-            error = self._error(e)
+            error: LLMError = self._error(e)
         else:
-            return self._response(message, body)
+            try:
+                message: object = await raw.parse()
+                body: object = raw.http_response.json()
+            except ValueError:  # includes JSONDecodeError
+                error = LLMResponseError("anthropic: the response body is not a JSON message")
+            else:
+                return self._response(message, body)
         # Raised outside the except block, so it holds no reference to the SDK's exception,
         # whose request carries the API key header.
         raise error
 
-    def _response(self, message: BetaMessage, body: object) -> LLMResponse:
+    def _response(self, message: object, body: object) -> LLMResponse:
+        # The SDK does not validate a response, so a malformed one is checked here: every failure
+        # must reach the loop as an LLMError.
+        if not isinstance(message, BetaMessage) or not isinstance(body, dict):
+            raise LLMResponseError("anthropic: the response body is not a JSON message")
         where = f"(model {message.model}, request {message.id})"
+        try:
+            usage = Usage(
+                input_tokens=message.usage.input_tokens,
+                output_tokens=message.usage.output_tokens,
+                cache_read_tokens=message.usage.cache_read_input_tokens or 0,
+                cache_write_tokens=message.usage.cache_creation_input_tokens or 0,
+            )
+        except (AttributeError, ValidationError) as e:  # no usage object, or bad counts
+            raise LLMResponseError(f"anthropic: response without valid usage {where}") from e
         stop = message.stop_reason
         if stop not in _STOP_REASONS:
-            raise LLMResponseError(f"anthropic: unsupported stop_reason {stop!r} {where}")
+            # The call was billed: keep its usage for the cost log.
+            raise LLMResponseError(f"anthropic: unsupported stop_reason {stop!r} {where}", usage)
         # The blocks exactly as the API sent them, to be sent back unchanged (preserved thinking).
         try:
-            raw_blocks = _RAW_BLOCKS.validate_python(
-                body.get("content") if isinstance(body, dict) else None
-            )
+            raw_blocks = _RAW_BLOCKS.validate_python(body.get("content"))
         except ValidationError as e:
             raise LLMResponseError(
                 f"anthropic: response content is not a list of blocks {where}"
             ) from e
-        usage = Usage(
-            input_tokens=message.usage.input_tokens,
-            output_tokens=message.usage.output_tokens,
-            cache_read_tokens=message.usage.cache_read_input_tokens or 0,
-            cache_write_tokens=message.usage.cache_creation_input_tokens or 0,
-        )
         try:
             blocks = [_block(raw) for raw in raw_blocks]
             # A refusal's partial output is discarded (Anthropic's docs); nothing enters history.
@@ -229,24 +238,20 @@ def _message(message: Message) -> BetaMessageParam:
 
 def _block_param(block: ContentBlock) -> BetaContentBlockParam:
     match block:
-        case (
-            ThinkingBlock(raw=raw)
-            | OpaqueBlock(raw=raw)
-            | TextBlock(raw=dict() as raw)
-            | ToolCall(raw=dict() as raw)
-        ):
+        case ThinkingBlock(raw=raw) | OpaqueBlock(raw=raw):
             # cast: the API's own block, sent back exactly as it returned it.
             return cast(BetaContentBlockParam, raw)
-        case TextBlock(text=text):
-            return {"type": "text", "text": text}
-        case ToolCall(id=call_id, name=name, arguments=arguments):
+        case TextBlock(text=text, raw=raw):
+            text_block: BetaTextBlockParam = {"type": "text", "text": text}
+            return _raw_if_unchanged(raw, text_block)
+        case ToolCall(id=call_id, name=name, arguments=arguments, raw=raw):
             tool_use: BetaToolUseBlockParam = {
                 "type": "tool_use",
                 "id": call_id,
                 "name": name,
                 "input": dict(arguments),  # a copy typed as the SDK's dict[str, object]
             }
-            return tool_use
+            return _raw_if_unchanged(raw, tool_use)
         case ToolResult(tool_call_id=call_id, content=content, is_error=is_error):
             return {
                 "type": "tool_result",
@@ -255,6 +260,20 @@ def _block_param(block: ContentBlock) -> BetaContentBlockParam:
                 "is_error": is_error,
             }
     raise AssertionError(f"unhandled content block {type(block).__name__}")  # pragma: no cover
+
+
+def _raw_if_unchanged(
+    raw: RawBlock | None, block: BetaTextBlockParam | BetaToolUseBlockParam
+) -> BetaContentBlockParam:
+    """The raw block while it still agrees with the validated fields, else the fields.
+
+    What LLMRequest validated is what gets sent: a block edited after the API returned it goes out
+    as edited, so the API (like FakeProvider) sees the edit, never a stale raw block.
+    """
+    if raw is not None and all(raw.get(k) == v for k, v in block.items()):
+        # cast: the API's own block, with fields we don't model, sent back as it returned it.
+        return cast(BetaContentBlockParam, raw)
+    return block
 
 
 def _block(raw: RawBlock) -> ContentBlock:

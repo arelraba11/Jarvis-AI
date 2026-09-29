@@ -1,9 +1,10 @@
 """AnthropicProvider: request and response mapping, errors and secrecy (Phase 2 task 5).
 
 No network: the SDK talks to an httpx2 MockTransport that records each request and answers from a
-script. The response fixtures in tests/fixtures/anthropic/ are hand-built from the shapes in
-Anthropic's docs (Messages API, preserved thinking, stop reasons, errors), not recorded from the
-live API. The live smoke tests (tests/test_anthropic_live.py) cover the real API.
+script. httpx2 is the SDK's HTTP layer (a dependency of `anthropic`, not declared by us); only
+tests import it. The response fixtures in tests/fixtures/anthropic/ are hand-built from the shapes
+in Anthropic's docs (Messages API, preserved thinking, stop reasons, errors), not recorded from
+the live API. The live smoke tests (tests/test_anthropic_live.py) cover the real API.
 """
 
 import asyncio
@@ -13,6 +14,7 @@ import traceback
 from pathlib import Path
 from typing import Any
 
+import anthropic
 import httpx2
 import pytest
 
@@ -61,6 +63,8 @@ TOOLS = (
 )
 
 
+# Any: fixtures and request bodies are JSON indexed freely in assertions; typing them as
+# JsonValue would need a cast or isinstance check at every nested access.
 def fixture(name: str) -> dict[str, Any]:
     data: dict[str, Any] = json.loads((FIXTURES / name).read_text(encoding="utf-8"))
     return data
@@ -100,7 +104,7 @@ def build(
 ) -> LLMProvider:
     factory = anthropic_factory(
         secrets or FakeSecretStore({"anthropic": KEY}),
-        http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(api.handle)),
+        http_client=anthropic.DefaultAsyncHttpxClient(transport=httpx2.MockTransport(api.handle)),
     )
     return factory(config)
 
@@ -266,6 +270,37 @@ def test_a_tool_use_turn_goes_back_exactly_as_the_api_returned_it() -> None:
     assert json.dumps(sent, ensure_ascii=False) == json.dumps(returned, ensure_ascii=False)
 
 
+def test_an_edited_assistant_block_is_sent_as_edited_not_as_its_stale_raw_block() -> None:
+    # raw is used only while it agrees with the validated fields. An edited block goes out as
+    # edited, so the API sees the edit exactly as FakeProvider does (a later thinking block then
+    # fails the prefix check), and LLMRequest's checks hold for what is sent.
+    api = FakeApi(ok(fixture("tool_use.json")), ok(fixture("thinking_text.json")))
+    provider = build(api)
+    first = said(complete(provider, request(user("מה השעה?"))))
+    thinking, text, call = first.content
+    assert isinstance(text, TextBlock) and isinstance(call, ToolCall)
+    edited = first.model_copy(
+        update={
+            "content": (
+                thinking,
+                text.model_copy(update={"text": "EDITED"}),
+                call.model_copy(update={"id": "c1"}),
+            )
+        }
+    )
+    answer = user(ToolResult(tool_call_id="c1", content="10:42"))
+    complete(provider, request(user("מה השעה?"), edited, answer))
+    sent = api.body(1)["messages"][1]["content"]
+    assert sent[0] == fixture("tool_use.json")["content"][0]  # thinking: always raw
+    assert sent[1] == {"type": "text", "text": "EDITED"}
+    assert sent[2] == {
+        "type": "tool_use",
+        "id": "c1",
+        "name": "get_current_time",
+        "input": {"timezone": "Asia/Jerusalem"},
+    }
+
+
 # --- Response mapping -----------------------------------------------------------------------
 
 
@@ -339,21 +374,54 @@ def test_a_refusal_after_partial_output_drops_the_partial_output() -> None:
     assert (response.stop_reason, response.message) == ("refusal", None)
 
 
-def test_an_unknown_stop_reason_is_an_error_that_names_it() -> None:
+def test_an_unknown_stop_reason_is_an_error_that_names_it_and_keeps_the_usage() -> None:
+    # The call was billed, so its usage stays available for the cost log (task 11).
     api = FakeApi(ok(fixture("unknown_stop_reason.json")))
-    with pytest.raises(LLMResponseError, match=r"unsupported stop_reason 'budget_exhausted'"):
+    with pytest.raises(
+        LLMResponseError, match=r"unsupported stop_reason 'budget_exhausted'"
+    ) as exc:
         complete(build(api), request(user("q")))
+    assert exc.value.usage == Usage(input_tokens=10, output_tokens=3)
 
 
 @pytest.mark.parametrize(
     "stop_reason", ["stop_sequence", "pause_turn", "compaction", "model_context_window_exceeded"]
 )
 def test_a_documented_stop_reason_jarvis_does_not_handle_is_an_error(stop_reason: str) -> None:
-    # Our requests never ask for these (no stop sequences, server tools or compaction), and the
-    # provider does not guess what one means.
+    # Documented, but Jarvis has no handling for them yet (model_context_window_exceeded comes
+    # back without being asked for; the docs say to treat it as truncated). The provider does
+    # not guess: it names the value and keeps the usage.
     body = fixture("unknown_stop_reason.json") | {"stop_reason": stop_reason}
     with pytest.raises(LLMResponseError, match=f"unsupported stop_reason '{stop_reason}'"):
         complete(build(FakeApi(ok(body))), request(user("q")))
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        pytest.param(
+            ok({k: v for k, v in fixture("thinking_text.json").items() if k != "usage"}),
+            id="no-usage",
+        ),
+        pytest.param(
+            ok(
+                fixture("thinking_text.json")
+                | {"usage": {"input_tokens": None, "output_tokens": 1}}
+            ),
+            id="null-tokens",
+        ),
+        pytest.param(
+            ok(fixture("thinking_text.json") | {"usage": {"input_tokens": -5, "output_tokens": 1}}),
+            id="negative-tokens",
+        ),
+        pytest.param(httpx2.Response(200, text="not json"), id="not-json"),
+        pytest.param(httpx2.Response(200, json=[1, 2]), id="top-level-list"),
+    ],
+)
+def test_a_malformed_200_response_is_a_response_error(reply: httpx2.Response) -> None:
+    # The loop catches LLMError; a broken response must not escape as AttributeError & co.
+    with pytest.raises(LLMResponseError, match="anthropic"):
+        complete(build(FakeApi(reply)), request(user("q")))
 
 
 def test_an_empty_answer_that_is_not_a_refusal_is_an_error() -> None:

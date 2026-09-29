@@ -57,5 +57,5 @@ testpaths = ["tests"]
 # them (a later -m replaces this one).
 addopts = "-ra --ignore=spikes -m 'not live'"
 markers = [
-    "live: calls a real API with a key from the Keychain; run by hand with `uv run pytest -m live`",
+    "live: calls a real API with a Keychain key; run by hand: `JARVIS_LIVE=1 uv run pytest -m live`",
 ]

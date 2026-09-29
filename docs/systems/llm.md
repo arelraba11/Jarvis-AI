@@ -55,6 +55,9 @@ run locally on the M4 Pro, the rest through APIs.
 - Every `ToolCall` has its `ToolResult` in the very next message, and every `ToolResult` answers a
   `ToolCall` in the message right before it. Anthropic and OpenAI both require this, so it is
   provider-neutral.
+- In a message with tool results, the results come before any other block (Anthropic: "the
+  tool_result blocks must come FIRST in the content array").
+- Only assistant blocks carry a provider's `raw` block.
 
 `jarvis/llm/contracts.py` is a leaf module: it imports nothing from `jarvis`. Config imports
 `Role` from it and `ModelRouter` imports config, so any `jarvis` import in `contracts.py` creates a
@@ -117,18 +120,24 @@ helpers.
   block, in order, with every field. Anthropic's docs: "A serializer that drops unknown block
   types, drops empty fields, or reorders blocks edits the prefix." `redacted_thinking` maps to
   `ThinkingBlock` (it is signed and bound like thinking); any other unmodeled type maps to
-  `OpaqueBlock`. The 400 for a prefix mismatch is recognized by its message ("bound to a
+  `OpaqueBlock`. A text or tool-use block is sent as its `raw` block only while `raw` agrees with
+  the validated fields; an edited block goes out as edited, so the API (like `FakeProvider`) sees
+  the edit and what `LLMRequest` checked is what is sent. The 400 for a prefix mismatch is recognized by its message ("bound to a
   different conversation": the docs name no structured field) and raises `PrefixMismatchError`.
-- **Stop reasons:** `end_turn`, `tool_use`, `max_tokens`, `refusal` map; anything else, including
-  documented ones our requests never ask for (`stop_sequence`, `pause_turn`, `compaction`,
-  `model_context_window_exceeded`), is an `LLMResponseError` that names it.
+- **Stop reasons:** `end_turn`, `tool_use`, `max_tokens`, `refusal` map; anything else is an
+  `LLMResponseError` that names it and keeps the call's `usage`, so it can still be costed. That
+  includes documented ones with no handling yet: `stop_sequence`, `pause_turn` and `compaction`
+  (our requests never cause them) and `model_context_window_exceeded` (returned without being
+  asked for; the docs say to treat it as truncated). A malformed response is an
+  `LLMResponseError` too, never a raw exception.
 - **Timeout and retries:** set explicitly: 600 s (connect 5 s) and 2 retries, the SDK's values.
   A non-streaming call sends nothing until it is done, so the timeout must cover the longest
   answer; by the SDK's estimate (3600 s per 128,000 tokens) that is 21,333 tokens, and the
   factory rejects a larger `max_tokens`.
 - **Tests:** mapping tests against hand-built fixtures (`tests/fixtures/anthropic/`, shapes from
   the docs) through a mock HTTP transport; live smoke tests behind the `live` marker
-  (`uv run pytest -m live`), never in CI.
+  plus `JARVIS_LIVE=1`, so no other `-m` expression runs them by accident
+  (`JARVIS_LIVE=1 uv run pytest -m live -s`); never in CI. They read the real Keychain key.
 
 ## Decisions
 

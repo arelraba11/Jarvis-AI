@@ -92,6 +92,10 @@ class Message(_Contract):
         for block in self.content:
             if not isinstance(block, _ALLOWED_BLOCKS[self.role]):
                 raise ValueError(f"a {self.role} message cannot carry a {block.type} block")
+            # Checks only that raw is set, never what it holds (raw is provider-opaque). On a user
+            # turn it could carry content the history checks never see.
+            if self.role == "user" and isinstance(block, TextBlock) and block.raw is not None:
+                raise ValueError("only assistant blocks carry a raw block")
         return self
 
 
@@ -128,6 +132,10 @@ class LLMRequest(_Contract):
                         f"messages[{i}]: tool result {block.tool_call_id!r} matches no tool call "
                         "in the previous message"
                     )
+            # Anthropic requires tool results first in the content array, any text after them.
+            kinds = [isinstance(b, ToolResult) for b in message.content]
+            if kinds != sorted(kinds, reverse=True):
+                raise ValueError(f"messages[{i}]: tool results must come before any other block")
             answered = {b.tool_call_id for b in message.content if isinstance(b, ToolResult)}
             if unanswered := sorted(calls - answered):
                 raise ValueError(
@@ -207,7 +215,12 @@ class LLMRequestError(LLMError):
 
 class LLMResponseError(LLMError):
     """The provider answered with something we can't map: a stop reason we don't handle, or a
-    response that breaks our contracts. Never guessed at."""
+    response that breaks our contracts. Never guessed at. `usage` is set when the call's token
+    usage is known, so a failed but billed call can still be costed."""
+
+    def __init__(self, message: str, usage: Usage | None = None) -> None:
+        super().__init__(message)
+        self.usage = usage
 
 
 class LLMProvider(Protocol):

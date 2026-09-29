@@ -283,3 +283,18 @@ def test_a_scripted_refusal_is_returned_without_a_message() -> None:
     refusal = LLMResponse(message=None, stop_reason="refusal", usage=Usage(), model="fake-model")
     provider = FakeProvider([refusal])
     assert complete(provider, (user("q"),)) == refusal
+
+
+def test_rejects_a_removed_thinking_block_that_is_put_back(provider: FakeProvider) -> None:
+    # Anthropic: "Once you remove a block, leave it out. Putting it back invalidates the thinking
+    # blocks produced while it was gone."
+    messages: Messages = (user("what time is it?"),)
+    messages += (said(provider, messages),)  # T0
+    messages += (Message(role="user", content=(ToolResult(tool_call_id="c1", content="10:42"),)),)
+    messages += (said(provider, messages),)  # T1
+    messages += (user("thanks"),)
+    without_t0 = drop_thinking(messages, "T0")
+    messages += (said(provider, without_t0),)  # T2, produced while T0 was gone
+    with pytest.raises(PrefixMismatchError, match=r"messages\[5\].*put back"):
+        complete(provider, next_turn(messages))
+    assert complete(provider, next_turn(drop_thinking(messages, "T0"))) == FINAL
