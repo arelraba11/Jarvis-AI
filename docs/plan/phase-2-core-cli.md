@@ -70,8 +70,10 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
    provider name fails when the router is built; providers are built once.
 4. **`SecretStore`.** Protocol, keyring implementation, in-memory fake. The first real provider
    needs its API key from here.
-   Tests: the fake round-trips a secret; the keyring implementation runs only against keyring's
-   fake/null backend, never the real Keychain.
+   Keychain naming: service `jarvis`, account = the secret's name ([infra](../systems/infra.md#secrets)).
+   Tests: the fake round-trips a secret; a missing secret's error gives the `security` command that
+   adds it; no value appears in a repr, error or log; the keyring implementation runs only against
+   an in-memory backend set with `keyring.set_keyring`, never the real Keychain.
 5. **First real provider (`planner`).** Anthropic, `claude-sonnet-5-5`
    ([ADR-0003](../adr/0003-llm-layer.md)). Maps `LLMRequest`/`LLMResponse`, including tool calls and usage.
    - The official `anthropic` SDK is a new dependency: ask before adding it. If approved, it is used
@@ -84,6 +86,9 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
      `thinking-binding-controls-2026-08-01` beta header and adaptive thinking), so the check doesn't
      depend on the account's creation date. Never `"drop_block"`: it hides bugs. The API's 400 for a
      mismatch maps to `PrefixMismatchError`.
+   - The API key is read through `SecretStore` as `anthropic` (Keychain: service `jarvis`, account
+     `anthropic`). On the first read macOS shows a Keychain access prompt, because the item was
+     created by `security`, not by Python: choose "Always Allow".
    - A stop reason outside `StopReason` (one the API adds later, say) maps to an explicit error that
      names it; the provider never crashes on it or guesses a meaning.
 
