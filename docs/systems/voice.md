@@ -47,6 +47,12 @@ All tentative until Phase 6 is detailed.
 
 - Voice approach: see [open decisions](../design.md#open-decisions); closed by Phase 1.
 - Where the voice session runs: see [architecture](../architecture.md#open-questions).
+- **Echo cancellation (AEC)** is required for use without headphones. Without it, the voice model
+  hears its own output through the mic and treats it as the user barging in (seen in the Phase 1
+  spike: [findings](../../spikes/voice/README.md#findings)). Muting the mic during playback isn't
+  a fix, since it breaks barge-in. Options (neither tested yet): the browser's AEC in the Tauri webview (`getUserMedia`
+  with `echoCancellation`), or macOS Voice Processing I/O in Python. Which one is possible depends
+  on, and is an input to, where the voice session runs.
 
 ## Introduced in phase
 

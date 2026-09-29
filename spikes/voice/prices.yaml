@@ -1,0 +1,10 @@
+# USD per 1M tokens, by modality. Used by analyze.py; the voice layer only.
+gemini:
+  source: "https://ai.google.dev/gemini-api/docs/pricing, checked 2026-09-28"
+  input_per_1m:
+    audio: 3.0
+    text: 0.75
+  # Thinking tokens are billed as output text.
+  output_per_1m:
+    audio: 12.0
+    text: 4.5
