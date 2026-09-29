@@ -90,3 +90,4 @@ CI runs on Linux, so when Mac-only code arrives:
   changes to tooling/CI config.
 - Before merging a PR, confirm the PR head equals your local HEAD, and merge with --match-head-commit.
 - The user is learning: explain each decision briefly (the *why*, one or two sentences).
+- Never add Co-Authored-By or "Generated with" lines to commits or PR

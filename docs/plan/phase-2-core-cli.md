@@ -22,7 +22,7 @@ chosen by role, a cost log and tracing.
   `BudgetSettings`, `RoleModelConfig` → [LLM](../systems/llm.md#config-keys);
   `AgentLimits` → [orchestrator](../systems/orchestrator.md#contracts).
 - **LLM:** `Role`, `Message`, `ToolCall`, `ToolResult`, `LLMRequest`, `LLMResponse`, `Usage`,
-  `LLMProvider`, `ModelRouter` → [LLM](../systems/llm.md#contracts).
+  `LLMProvider`, `PrefixMismatchError`, `ModelRouter` → [LLM](../systems/llm.md#contracts).
 - **Tools:** `PermissionLevel` → [permissions](../systems/permissions.md#contracts);
   `ToolSpec`, `Tool`, `ToolRegistry`, `@tool` → [modules](../systems/modules.md#contracts).
 - **Agent:** `AgentRun`, `RunResult`, `Orchestrator` → [orchestrator](../systems/orchestrator.md#contracts).
@@ -52,7 +52,18 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
    one field; an unknown key or a wrong type fails with a clear error.
 2. **LLM contracts + fake provider.** The models and the `LLMProvider` Protocol; `FakeProvider`
    returns scripted responses (in `tests/fakes/`).
-   Tests: model validation; the fake satisfies the Protocol (checked by mypy).
+   - `FakeProvider` enforces the same prefix check as the real API
+     ([ADR-0003](../adr/0003-llm-layer.md)): for every thinking block it produced, the `system`
+     prompt, the tools and the messages before that block must be unchanged in later calls. It
+     allows what the API allows (removing a leading run of thinking blocks, oldest first) and raises
+     `PrefixMismatchError`, the error the real provider raises, otherwise. So a history bug fails in
+     unit tests, not against the real API.
+
+   Tests:
+   - Model validation; the fake satisfies the Protocol (checked by mypy).
+   - The fake raises `PrefixMismatchError` when the system prompt, the tools or an earlier message
+     changes, or when a thinking block is removed from the middle; it accepts an append-only history
+     and one whose leading thinking blocks were removed.
 3. **`ModelRouter`.** Role → provider from `RoleModelConfig`.
    Tests: a configured role resolves; a missing role fails with a clear error.
 4. **`SecretStore`.** Protocol, keyring implementation, in-memory fake. The first real provider
@@ -67,6 +78,10 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
      the ADR.
    - Respect the API constraints listed in ADR-0003's consequences (append-only history, `auto`
      tool choice, `refusal` stop reason).
+   - Every request sets `thinking.block_binding.prefix_mismatch_behavior: "error"` (with the
+     `thinking-binding-controls-2026-08-01` beta header and adaptive thinking), so the check doesn't
+     depend on the account's creation date. Never `"drop_block"`: it hides bugs. The API's 400 for a
+     mismatch maps to `PrefixMismatchError`.
 
    Tests: mapping against recorded response fixtures, with no network; a manual smoke test on the real API.
 6. **Minimal loop.** `Orchestrator` with no tools yet: system prompt from `docs/behavior.md` +
@@ -111,7 +126,10 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
     the orchestrator reports every step to it.
     Tests: a fake tracer records the expected spans for a run with one tool call.
 13. **Session.** Short-term history kept across turns; a new session starts after the idle timeout.
-    Tests: history is passed to the next turn; the timeout starts a new session.
+    History trimming drops old thinking blocks (a leading run, oldest first); it never edits or
+    deletes an earlier message that precedes a kept thinking block ([ADR-0003](../adr/0003-llm-layer.md)).
+    Tests: history is passed to the next turn; the timeout starts a new session; a trimmed history
+    is accepted by `FakeProvider`'s prefix check.
 14. **Eval runner + grader** ([evals](../systems/evals.md)). The acceptance examples below are
     stored as `EvalCase`s in `evals/`; the runner and `Grader` are built as described there.
     Tests:
