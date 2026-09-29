@@ -16,8 +16,8 @@ and then sends one more request built from it.
 import asyncio
 
 import pytest
-from fakes.llm import FakeProvider
 
+from fakes.llm import FakeProvider
 from jarvis.llm.contracts import (
     LLMProvider,
     LLMRequest,

@@ -54,6 +54,10 @@ run locally on the M4 Pro, the rest through APIs.
   `ToolCall` in the message right before it. Anthropic and OpenAI both require this, so it is
   provider-neutral.
 
+`jarvis/llm/contracts.py` is a leaf module: it imports nothing from `jarvis`. Config imports
+`Role` from it and `ModelRouter` imports config, so any `jarvis` import in `contracts.py` creates a
+cycle.
+
 ## Config keys
 
 - `models` (in config): a role → `RoleModelConfig` mapping, with `provider` and `model` (both

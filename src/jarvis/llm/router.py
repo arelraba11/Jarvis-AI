@@ -30,9 +30,16 @@ class ModelRouter:
                     f"(registered: {registered})"
                 )
         # Built once here and reused for every call.
-        self._providers = {
-            role: factories[config.provider](config.model) for role, config in models.items()
-        }
+        self._providers: dict[Role, LLMProvider] = {}
+        for role, config in models.items():
+            try:
+                self._providers[role] = factories[config.provider](config.model)
+            # Any failure (a missing API key, say) is reported with the role and provider it
+            # belongs to; the original error stays attached as the cause.
+            except Exception as e:
+                raise ModelRouterError(
+                    f"models.{role}: provider {config.provider!r} failed to start: {e}"
+                ) from e
 
     def for_role(self, role: Role) -> LLMProvider:
         try:

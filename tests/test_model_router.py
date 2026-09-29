@@ -1,6 +1,6 @@
 import pytest
-from fakes.llm import FakeProvider
 
+from fakes.llm import FakeProvider
 from jarvis.core.config import RoleModelConfig
 from jarvis.llm.contracts import LLMProvider, Role
 from jarvis.llm.router import ModelRouter, ModelRouterError
@@ -77,3 +77,20 @@ def test_building_fails_on_a_provider_with_no_registered_factory() -> None:
         )
     # Every name is checked before any provider is built.
     assert factory.built == []
+
+
+def test_a_factory_failure_names_the_role_and_provider() -> None:
+    # In task 5 a missing Keychain key fails here, at startup; the message must say where.
+    missing_key = LookupError("no API key in the Keychain")
+
+    def failing(model: str) -> LLMProvider:
+        raise missing_key
+
+    with pytest.raises(
+        ModelRouterError,
+        match=r"^models\.planner: provider 'broken' failed to start: no API key in the Keychain$",
+    ) as exc:
+        ModelRouter(
+            {Role.PLANNER: RoleModelConfig(provider="broken", model="m")}, {"broken": failing}
+        )
+    assert exc.value.__cause__ is missing_key
