@@ -19,9 +19,22 @@ class SecretNotFoundError(Exception):
     def __init__(self, name: str, service: str = SERVICE) -> None:
         super().__init__(
             f"secret {name!r} not found in the Keychain. "
-            f"Add it with: security add-generic-password -s {service} -a {name} -w"
+            # -U also updates an item that exists but wasn't readable (Deny on the access prompt).
+            f"Add it with: security add-generic-password -U -s {service} -a {name} -w"
         )
         self.name = name
+
+
+def check_name(name: str) -> None:
+    if not name:
+        raise ValueError("secret name must not be empty")
+
+
+def check_value(value: str) -> None:
+    # An empty API key would pass as valid here and only fail later, as a 401 from the provider.
+    # The message never includes the value.
+    if not value:
+        raise ValueError("secret value must not be empty")
 
 
 class SecretStore(Protocol):
@@ -41,15 +54,19 @@ class KeyringSecretStore:
         self._service = service
 
     def get(self, name: str) -> str:
+        check_name(name)
         value = keyring.get_password(self._service, name)
         if value is None:
             raise SecretNotFoundError(name, self._service)
         return value
 
     def set(self, name: str, value: str) -> None:
+        check_name(name)
+        check_value(value)
         keyring.set_password(self._service, name, value)
 
     def delete(self, name: str) -> None:
+        check_name(name)
         with suppress(PasswordDeleteError):  # already gone: the goal state
             keyring.delete_password(self._service, name)
 

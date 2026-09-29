@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 
 import pytest
 
@@ -29,10 +30,11 @@ def test_set_replaces_the_value(store: SecretStore) -> None:
 
 
 def test_a_missing_secret_fails_with_the_command_that_adds_it(store: SecretStore) -> None:
-    # behavior.md R3: the user gets the exact step, not just "not found".
+    # behavior.md R3: the user gets the exact step, not just "not found". -U updates an item that
+    # exists but wasn't readable (Deny on the access prompt); without it, `security` fails.
     with pytest.raises(SecretNotFoundError) as exc:
         store.get("anthropic")
-    assert "security add-generic-password -s jarvis -a anthropic -w" in str(exc.value)
+    assert "security add-generic-password -U -s jarvis -a anthropic -w" in str(exc.value)
 
 
 def test_delete_removes_the_secret(store: SecretStore) -> None:
@@ -45,6 +47,29 @@ def test_delete_removes_the_secret(store: SecretStore) -> None:
 def test_deleting_a_missing_secret_is_not_an_error(store: SecretStore) -> None:
     # Removing an account whose token is already gone reaches the goal state anyway (Phase 3).
     store.delete("anthropic")
+    with pytest.raises(SecretNotFoundError):
+        store.get("anthropic")
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        pytest.param(lambda s: s.get(""), id="get"),
+        pytest.param(lambda s: s.set("", VALUE), id="set"),
+        pytest.param(lambda s: s.delete(""), id="delete"),
+    ],
+)
+def test_an_empty_name_is_rejected(
+    store: SecretStore, call: Callable[[SecretStore], object]
+) -> None:
+    with pytest.raises(ValueError, match="secret name must not be empty"):
+        call(store)
+
+
+def test_an_empty_value_is_rejected(store: SecretStore) -> None:
+    # An empty API key would pass as valid here and only fail later, as a 401 from the provider.
+    with pytest.raises(ValueError, match="secret value must not be empty"):
+        store.set("anthropic", "")
     with pytest.raises(SecretNotFoundError):
         store.get("anthropic")
 
@@ -76,7 +101,7 @@ def test_keyring_service_is_injectable(keyring_backend: InMemoryKeyring) -> None
     assert keyring_backend.items == {("jarvis-test", "anthropic"): VALUE}
     store.delete("anthropic")
     # The fix step names the service the store actually reads from.
-    with pytest.raises(SecretNotFoundError, match="-s jarvis-test -a anthropic -w"):
+    with pytest.raises(SecretNotFoundError, match="-U -s jarvis-test -a anthropic -w"):
         store.get("anthropic")
 
 
