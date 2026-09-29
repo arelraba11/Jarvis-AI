@@ -34,15 +34,25 @@ run locally on the M4 Pro, the rest through APIs.
 | Contract | Kind | Definition |
 |---|---|---|
 | `Role` | enum | `planner`, `writer`, `classifier`, `embeddings`, `memory` |
-| `Message`, `ToolCall`, `ToolResult` | models | Conversation content sent to and from a provider |
+| `Message`, `ToolCall`, `ToolResult` | models | Conversation content sent to and from a provider. A `Message` holds content blocks: `TextBlock`, `ThinkingBlock` (the provider's block, carried opaquely and sent back unchanged), `ToolCall`, `ToolResult` |
+| `ToolDefinition` | model | A tool as offered to the model: name, description, JSON schema. No permission level: core enforces that, not the model |
 | `LLMRequest`, `LLMResponse` | models | One provider call, including tool calls |
 | `Usage` | model | Token usage of one call |
-| `LLMProvider` | Protocol | One implementation per provider |
-| `PrefixMismatchError` | exception | A provider rejected a request because history before a thinking block changed ([ADR-0003](../adr/0003-llm-layer.md)); `FakeProvider` raises it too |
+| `LLMProvider` | Protocol | One implementation per provider: `async complete(LLMRequest) -> LLMResponse` |
+| `PrefixMismatchError` | exception | A provider rejected a request because history before a kept thinking block changed, or a thinking block was removed from the middle (removing from the start, from the end, or all of them is allowed; [ADR-0003](../adr/0003-llm-layer.md)); `FakeProvider` raises it too |
 | `ModelRouter` | class | Role → provider, from `RoleModelConfig` |
 | `UsageRecord` | model | Cost, role, module, run id, `user_id`; computed from `Usage` and per-model prices |
 | `CostLedger` | Protocol | Where `UsageRecord`s are written |
 | `DailyBudgetGuard` | class | Refuses a new run once the daily cap is reached |
+
+`LLMRequest` rejects a history that no provider would accept, so a loop bug (from
+[Phase 2](../plan/phase-2-core-cli.md) task 8 on) fails in unit tests, not as a 400 from the API:
+
+- The first message is from the user. So is the last: the loop never sends a request that ends on
+  an assistant turn (our rule, not an API one).
+- Every `ToolCall` has its `ToolResult` in the very next message, and every `ToolResult` answers a
+  `ToolCall` in the message right before it. Anthropic and OpenAI both require this, so it is
+  provider-neutral.
 
 ## Config keys
 
