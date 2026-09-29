@@ -89,16 +89,24 @@ CI runs on Linux, so when Mac-only code arrives:
 - Ask before structural changes: new top-level dirs or packages, new dependencies, moving modules,
   changes to tooling/CI config.
 - Before merging a PR, confirm the PR head equals your local HEAD, and merge with --match-head-commit.
-- After opening or updating a PR and CI is green, run the pr-reviewer subagent
-  (`.claude/agents/pr-reviewer.md`), passing only the PR number and the plan task number: no
-  summary, no self-assessment.
-- Fix every CONFIRMED blocker or major finding in the same PR and re-run the reviewer. For findings
-  you disagree with, say why.
-- Include the reviewer's final report verbatim in your report to the user. Its "Reviewed head" must
-  equal the PR head; otherwise re-run. A report that hits maxTurns without a verdict counts as not
-  reviewed: resume the reviewer.
-- When a review finds a new defect pattern, propose adding it to the agent's "Defect patterns" list
-  in a separate PR.
+- Run the reviewer once per PR, on its final state (CI green, nothing more planned). Pick the tier
+  by agent type; all three follow the same procedure (`.claude/skills/pr-review/SKILL.md`):
+  - `pr-reviewer-docs` (sonnet, effort medium): the PR changes only docs, config comments or
+    agent/tooling files, with no `.py` change.
+  - `pr-reviewer` (opus, effort high): any code change, hooks and tests included.
+  - `pr-reviewer-deep` (opus, effort xhigh): only when the user asks for it.
+- Delegation message: only the PR number and the plan task number; no summary, no self-assessment.
+- Fix every CONFIRMED blocker or major finding in the same PR. Then run a delta review, not a full
+  one: a new reviewer of the same tier gets the PR number, the plan task, the previous "Reviewed
+  head", and the previous report's findings verbatim; it checks only the new commits and each
+  finding. For findings you disagree with, say why.
+- Include the reviewer's final report verbatim in your report to the user, with its last line
+  `Cost: <turns>, <tokens>, <duration>` filled in from the harness's usage for that run (the
+  reviewer can't measure its own cost), and state the number of CONFIRMED findings next to it.
+  Its "Reviewed head" must equal the PR head; otherwise re-run. A report that hits maxTurns
+  without a verdict counts as not reviewed: resume the reviewer.
+- When a review finds a new defect pattern, propose adding it to the "Defect patterns" list in
+  the pr-review skill in a separate PR.
 - The reviewer's verdict never merges any PR: every PR waits for the user's approval.
 - The user is learning: explain each decision briefly (the *why*, one or two sentences).
 - Never add Co-Authored-By or "Generated with" lines to commits or PR

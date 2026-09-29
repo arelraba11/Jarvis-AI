@@ -2,7 +2,8 @@
 
 Reads the hook input JSON on stdin and exits 2 (block, reason on stderr) when the Bash command
 would run git push/commit or a GitHub write through gh. Exit 0 lets the normal permission flow
-apply. Wired in .claude/agents/pr-reviewer.md, so it runs only while the reviewer is active.
+apply. Wired in each pr-reviewer agent file (.claude/agents/pr-reviewer*.md), so it runs only
+while a reviewer is active.
 
 The whole command string is scanned, including quoted parts, so `sh -c "git push"` and
 `bash -c 'gh pr merge 1'` are caught. It is a guard against mistakes and injected
