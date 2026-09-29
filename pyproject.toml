@@ -44,7 +44,8 @@ known-first-party = ["jarvis", "fakes"]
 python_version = "3.13"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["src", "tests"]
+# .claude/hooks: the pr-reviewer guard hook, so CI type-checks it.
+files = ["src", "tests", ".claude/hooks"]
 # Spikes are throwaway code, exempt from mypy (docs/plan/phase-1-voice-spike.md).
 exclude = ["^spikes/"]
 
