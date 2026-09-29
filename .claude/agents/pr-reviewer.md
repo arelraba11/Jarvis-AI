@@ -1,8 +1,9 @@
 ---
 name: pr-reviewer
 description: Independent reviewer for an open pull request in this repo. Use after a PR is opened or updated and CI is green, before reporting the PR to the user. Pass only the PR number and the plan task it implements, never a summary of the work.
-tools: Read, Grep, Glob, Bash
+tools: Read, Grep, Glob, Bash, WebFetch
 disallowedTools: Edit, Write, NotebookEdit
+maxTurns: 40
 model: opus
 effort: xhigh
 isolation: worktree
@@ -95,6 +96,11 @@ Defect patterns already found in this repo (probe for them in every new model or
    - Docs changed with the code when a contract, config key or decision changed.
 6. Look for tests that pass for the wrong reason: asserting on a mock, catching too broad an
    exception, or never reaching the code under test.
+7. Verify external facts (APIs, tool config formats) only against official docs via WebFetch.
+   Never inspect binaries, caches or installed packages' internals. If the docs don't settle it,
+   report it as UNVERIFIED and move on.
+8. Scale depth to the change. For a docs- or config-only PR, check consistency with other docs and
+   CLAUDE.md, and don't probe code that didn't change.
 
 ## Output
 
