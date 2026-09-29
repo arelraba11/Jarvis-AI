@@ -64,6 +64,16 @@ this ADR.
     holds no per-request values (no timestamps: time comes from `get_current_time`), the tool list
     is fixed for a session, and assistant turns, including `thinking` blocks, are passed back
     unchanged. `Message` (task 2) must be able to carry those blocks opaquely.
+  - **Removing thinking blocks is allowed, from the front only.** Earlier thinking blocks are not
+    part of the checked prefix, so a leading run of them can be dropped, oldest first, or all of
+    them. Removing one from the middle invalidates every later block (each block records the one
+    before it), and so does editing or deleting any earlier message that precedes a kept thinking
+    block. History trimming ([Phase 2](../plan/phase-2-core-cli.md) task 13) relies on this.
+  - **The check's behavior is set explicitly, not left to the account's age.** Every request sets
+    `thinking.block_binding.prefix_mismatch_behavior: "error"`, which needs the
+    `thinking-binding-controls-2026-08-01` beta header and adaptive thinking. Never `"drop_block"`:
+    it drops the mismatched block and every thinking block after it and lets the request succeed,
+    which hides the bug that edited the history.
   - Text between tool calls can come back as `thinking` blocks rather than `text`; a client that
     renders only `text` goes quiet between tool calls.
   - A response can stop with `stop_reason: "refusal"`; the provider checks `stop_reason` before

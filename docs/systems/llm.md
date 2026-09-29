@@ -38,6 +38,7 @@ run locally on the M4 Pro, the rest through APIs.
 | `LLMRequest`, `LLMResponse` | models | One provider call, including tool calls |
 | `Usage` | model | Token usage of one call |
 | `LLMProvider` | Protocol | One implementation per provider |
+| `PrefixMismatchError` | exception | A provider rejected a request because history before a thinking block changed ([ADR-0003](../adr/0003-llm-layer.md)); `FakeProvider` raises it too |
 | `ModelRouter` | class | Role → provider, from `RoleModelConfig` |
 | `UsageRecord` | model | Cost, role, module, run id, `user_id`; computed from `Usage` and per-model prices |
 | `CostLedger` | Protocol | Where `UsageRecord`s are written |
