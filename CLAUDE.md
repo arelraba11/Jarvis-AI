@@ -89,5 +89,14 @@ CI runs on Linux, so when Mac-only code arrives:
 - Ask before structural changes: new top-level dirs or packages, new dependencies, moving modules,
   changes to tooling/CI config.
 - Before merging a PR, confirm the PR head equals your local HEAD, and merge with --match-head-commit.
+- After opening or updating a PR and CI is green, run the pr-reviewer subagent
+  (`.claude/agents/pr-reviewer.md`) via @"pr-reviewer (agent)", passing only the PR number and the
+  plan task number: no summary, no self-assessment.
+- Fix every CONFIRMED blocker or major finding in the same PR and re-run the reviewer. For findings
+  you disagree with, say why.
+- Include the reviewer's final report verbatim in your report to the user.
+- When a review finds a new defect pattern, propose adding it to the agent's "Defect patterns" list
+  in a separate PR.
+- The reviewer never replaces the user's approval to merge code PRs.
 - The user is learning: explain each decision briefly (the *why*, one or two sentences).
 - Never add Co-Authored-By or "Generated with" lines to commits or PR
