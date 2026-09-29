@@ -56,10 +56,23 @@ run locally on the M4 Pro, the rest through APIs.
 
 ## Config keys
 
-- `RoleModelConfig`: role → provider and model.
+- `models` (in config): a role → `RoleModelConfig` mapping, with `provider` and `model` (both
+  non-empty). An unknown role name is a config error. Code has no default: core names no provider or
+  model, so the `planner` entry comes from `default.yaml`:
+
+  ```yaml
+  models:
+    planner: {provider: anthropic, model: claude-sonnet-5-5}
+  ```
+
+  `local.yaml` can change one key of a role (only `model`, say) or add a role.
+- `ModelRouter` gets a registry of provider name → factory(model) → `LLMProvider`, and builds each
+  role's provider once, when it is built. Config can't know which providers exist, so a provider
+  name with no registered factory fails when the router is built, not on the first call. Each
+  provider's factory is registered by the task that adds it (Anthropic's in task 5).
 - `BudgetSettings` (`budget` in config): `daily_cap_usd`, the temporary daily cap (default 3.0, finite and > 0).
 - Per-model prices, since anything changeable without code is config.
-- Open question: key names for `RoleModelConfig` and prices are not specified yet.
+- Open question: key names for prices are not specified yet.
 
 ## Decisions
 

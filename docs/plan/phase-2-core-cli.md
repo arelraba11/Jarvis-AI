@@ -64,8 +64,10 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
    - The fake raises `PrefixMismatchError` when the system prompt, the tools or an earlier message
      changes, or when a thinking block is removed from the middle; it accepts an append-only history
      and one whose leading or trailing thinking blocks were removed.
-3. **`ModelRouter`.** Role → provider from `RoleModelConfig`.
-   Tests: a configured role resolves; a missing role fails with a clear error.
+3. **`ModelRouter`.** Role → provider from `RoleModelConfig` (`models` in config), through a
+   registry of provider name → factory; the router never names a provider.
+   Tests: a configured role resolves; a missing role fails with a clear error; an unregistered
+   provider name fails when the router is built; providers are built once.
 4. **`SecretStore`.** Protocol, keyring implementation, in-memory fake. The first real provider
    needs its API key from here.
    Tests: the fake round-trips a secret; the keyring implementation runs only against keyring's

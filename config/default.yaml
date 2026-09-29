@@ -3,3 +3,7 @@
 
 budget:
   daily_cap_usd: 3.0
+
+# Role -> provider and model. A provider name must be registered with the ModelRouter.
+models:
+  planner: {provider: anthropic, model: claude-sonnet-5-5}

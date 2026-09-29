@@ -4,7 +4,15 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from jarvis.core.config import CONFIG_DIR, ConfigError, Settings, deep_merge, load_settings
+from jarvis.core.config import (
+    CONFIG_DIR,
+    ConfigError,
+    RoleModelConfig,
+    Settings,
+    deep_merge,
+    load_settings,
+)
+from jarvis.llm.contracts import Role
 
 
 def write(config_dir: Path, name: str, text: str) -> None:
@@ -24,12 +32,29 @@ def test_settings_have_safe_defaults_without_any_file() -> None:
     assert settings.user.week_start == "sunday"
     assert settings.user.default_account_id is None
     assert settings.budget.daily_cap_usd > 0
+    # Code names no provider or model (ADR-0003): the planner entry comes from default.yaml.
+    assert settings.models == {}
 
 
 def test_repo_default_yaml_loads_without_local_yaml(repo_defaults: Path) -> None:
     settings = load_settings(repo_defaults)
     assert settings.budget.daily_cap_usd == 3.0
     assert settings.user == Settings().user
+    assert settings.models == {
+        Role.PLANNER: RoleModelConfig(provider="anthropic", model="claude-sonnet-5-5")
+    }
+
+
+def test_local_yaml_can_change_one_key_of_a_role_and_add_a_role(repo_defaults: Path) -> None:
+    write(
+        repo_defaults,
+        "local.yaml",
+        "models:\n  planner: {model: claude-opus-5-5}\n  writer: {provider: other, model: m}\n",
+    )
+    assert load_settings(repo_defaults).models == {
+        Role.PLANNER: RoleModelConfig(provider="anthropic", model="claude-opus-5-5"),
+        Role.WRITER: RoleModelConfig(provider="other", model="m"),
+    }
 
 
 def test_local_yaml_overrides_one_field_and_keeps_the_rest(repo_defaults: Path) -> None:
@@ -74,6 +99,15 @@ def test_an_int_is_accepted_for_a_float_field(repo_defaults: Path) -> None:
         # user.id keys every store, so it can't be empty.
         ('user:\n  id: ""\n', "user.id", "at least 1 character"),
         ('user:\n  default_account_id: ""\n', "user.default_account_id", "at least 1 character"),
+        ("models:\n  plannr: {provider: p, model: m}\n", "models.plannr.[key]", "'planner'"),
+        ('models:\n  writer: {provider: "", model: m}\n', "models.writer.provider", "at least 1"),
+        ('models:\n  writer: {provider: p, model: ""}\n', "models.writer.model", "at least 1"),
+        ("models:\n  writer: {provider: p}\n", "models.writer.model", "Field required"),
+        (
+            "models:\n  writer: {provider: p, model: m, effort: high}\n",
+            "models.writer.effort",
+            "Extra inputs are not permitted",
+        ),
     ],
 )
 def test_invalid_local_yaml_fails_naming_file_and_key(
