@@ -27,9 +27,15 @@ class Role(StrEnum):
     MEMORY = "memory"
 
 
+# A provider's own block, exactly as its API returned it. Provider-opaque: core never reads it;
+# only the provider that produced it does, to send the block back unchanged (ADR-0003).
+RawBlock = dict[str, JsonValue]
+
+
 class TextBlock(_Contract):
     type: Literal["text"] = "text"
     text: str
+    raw: RawBlock | None = None  # set on assistant text a provider returned
 
 
 class ThinkingBlock(_Contract):
@@ -39,7 +45,7 @@ class ThinkingBlock(_Contract):
     """
 
     type: Literal["thinking"] = "thinking"
-    raw: dict[str, JsonValue]
+    raw: RawBlock
 
 
 class ToolCall(_Contract):
@@ -47,6 +53,15 @@ class ToolCall(_Contract):
     id: str = Field(min_length=1)
     name: str = Field(min_length=1)
     arguments: dict[str, JsonValue]
+    raw: RawBlock | None = None  # set on a tool call a provider returned
+
+
+class OpaqueBlock(_Contract):
+    """An assistant block of a type we don't model, carried through in order and sent back
+    unchanged by the provider that produced it. Core ignores it; it is never dropped."""
+
+    type: Literal["opaque"] = "opaque"
+    raw: RawBlock
 
 
 class ToolResult(_Contract):
@@ -57,14 +72,14 @@ class ToolResult(_Contract):
 
 
 ContentBlock = Annotated[
-    TextBlock | ThinkingBlock | ToolCall | ToolResult, Field(discriminator="type")
+    TextBlock | ThinkingBlock | ToolCall | ToolResult | OpaqueBlock, Field(discriminator="type")
 ]
 
 
 # Only the model produces thinking and tool calls; only the user side returns tool results.
 _ALLOWED_BLOCKS: dict[str, tuple[type[BaseModel], ...]] = {
     "user": (TextBlock, ToolResult),
-    "assistant": (TextBlock, ThinkingBlock, ToolCall),
+    "assistant": (TextBlock, ThinkingBlock, ToolCall, OpaqueBlock),
 }
 
 
@@ -132,14 +147,27 @@ class Usage(_Contract):
 StopReason = Literal["end_turn", "tool_use", "max_tokens", "refusal"]
 
 
+# Provider-neutral effort levels. Each provider maps them to its own API, and its factory rejects
+# a level it can't honor when the router is built.
+Effort = Literal["low", "medium", "high", "xhigh", "max"]
+
+
 class LLMResponse(_Contract):
-    message: Message
+    # None exactly on a refusal: a refusal can come before any output, and partial output before
+    # a refusal is discarded, so nothing of it can enter the history.
+    message: Message | None
     stop_reason: StopReason
     usage: Usage
     model: str  # the model that answered; per-model prices turn `usage` into cost
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
+        if self.message is None:
+            if self.stop_reason != "refusal":
+                raise ValueError(f"stop_reason {self.stop_reason} needs a message")
+            return self
+        if self.stop_reason == "refusal":
+            raise ValueError("a refusal carries no message")
         if self.message.role != "assistant":
             raise ValueError("the response message must be from the assistant")
         if self.stop_reason == "tool_use" and not any(
@@ -149,10 +177,37 @@ class LLMResponse(_Contract):
         return self
 
 
-class PrefixMismatchError(Exception):
+class LLMError(Exception):
+    """A provider call failed. The loop catches this without knowing which provider raised it.
+    Messages name the provider and never contain a secret."""
+
+
+class PrefixMismatchError(LLMError):
     """The history before a kept thinking block changed, or a thinking block was removed from the
     middle of the history (ADR-0003). The real provider raises it on the API's 400; `FakeProvider`
     raises it too, so a history bug fails in unit tests."""
+
+
+class LLMAuthError(LLMError):
+    """The provider rejected the credentials (invalid, revoked, or not allowed)."""
+
+
+class LLMRateLimitError(LLMError):
+    """Rate limited, still after the client's own retries."""
+
+
+class LLMUnavailableError(LLMError):
+    """Timeout, network failure, overload or server error, still after the client's retries."""
+
+
+class LLMRequestError(LLMError):
+    """The provider rejected the request itself (a bug on our side, or a limit); retrying the same
+    request fails the same way."""
+
+
+class LLMResponseError(LLMError):
+    """The provider answered with something we can't map: a stop reason we don't handle, or a
+    response that breaks our contracts. Never guessed at."""
 
 
 class LLMProvider(Protocol):

@@ -23,6 +23,7 @@ from jarvis.llm.contracts import (
     LLMRequest,
     LLMResponse,
     Message,
+    OpaqueBlock,
     PrefixMismatchError,
     StopReason,
     TextBlock,
@@ -72,6 +73,13 @@ def complete(provider: LLMProvider, messages: Messages, **overrides: object) -> 
     return asyncio.run(provider.complete(request))
 
 
+def said(provider: LLMProvider, messages: Messages) -> Message:
+    """The assistant message of the next response (none of the scripted ones is a refusal)."""
+    message = complete(provider, messages).message
+    assert message is not None
+    return message
+
+
 @pytest.fixture
 def provider() -> FakeProvider:
     return FakeProvider(
@@ -90,11 +98,11 @@ def provider() -> FakeProvider:
 @pytest.fixture
 def history(provider: FakeProvider) -> Messages:
     messages: Messages = (user("what time is it?"),)
-    messages += (complete(provider, messages).message,)
+    messages += (said(provider, messages),)
     messages += (Message(role="user", content=(ToolResult(tool_call_id="c1", content="10:42"),)),)
-    messages += (complete(provider, messages).message,)
+    messages += (said(provider, messages),)
     messages += (user("thanks"),)
-    messages += (complete(provider, messages).message,)
+    messages += (said(provider, messages),)
     return messages
 
 
@@ -117,7 +125,7 @@ def drop_thinking(messages: Messages, *names: str) -> Messages:
 def test_the_fake_satisfies_the_provider_protocol(provider: FakeProvider) -> None:
     # The annotation is the check: mypy fails here if FakeProvider stops matching LLMProvider.
     typed: LLMProvider = provider
-    assert complete(typed, (user("hi"),)).message.content[1] == ToolCall(
+    assert said(typed, (user("hi"),)).content[1] == ToolCall(
         id="c1", name="get_current_time", arguments={"timezone": "UTC"}
     )
 
@@ -231,3 +239,47 @@ def test_scripted_thinking_blocks_must_be_unique() -> None:
     same = reply(TextBlock(text="hi"), thinking="same")
     with pytest.raises(AssertionError, match="unique"):
         FakeProvider([same, same])
+
+
+def test_an_opaque_block_is_part_of_the_prefix_like_any_non_thinking_block() -> None:
+    # A block type we don't model is carried through; editing it later is an edit of the history
+    # before every later thinking block, as the real API sees it.
+    opaque = OpaqueBlock(raw={"type": "compaction", "content": "summary v1"})
+    provider = FakeProvider(
+        [
+            LLMResponse(
+                message=Message(
+                    role="assistant",
+                    content=(
+                        ThinkingBlock(raw={"type": "thinking", "thinking": "t0"}),
+                        opaque,
+                        TextBlock(text="a"),
+                    ),
+                ),
+                stop_reason="end_turn",
+                usage=Usage(),
+                model="fake-model",
+            ),
+            reply(TextBlock(text="b"), thinking="t1"),
+            FINAL,
+        ]
+    )
+    messages: Messages = (user("q"),)
+    messages += (said(provider, messages),)
+    assert messages[1].content[1] == opaque
+    messages += (user("more"),)
+    messages += (said(provider, messages),)
+
+    edited_block = OpaqueBlock(raw={"type": "compaction", "content": "summary v2"})
+    edited = messages[1].model_copy(
+        update={"content": (messages[1].content[0], edited_block, messages[1].content[2])}
+    )
+    with pytest.raises(PrefixMismatchError, match=r"messages\[3\].*history before it changed"):
+        complete(provider, next_turn(replace(messages, 1, edited)))
+    assert complete(provider, next_turn(messages)) == FINAL
+
+
+def test_a_scripted_refusal_is_returned_without_a_message() -> None:
+    refusal = LLMResponse(message=None, stop_reason="refusal", usage=Usage(), model="fake-model")
+    provider = FakeProvider([refusal])
+    assert complete(provider, (user("q"),)) == refusal

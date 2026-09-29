@@ -25,7 +25,10 @@ Where things live:
 - `src/jarvis/core/` — config (`config.py`), secrets (`secret_store.py`). Core names no provider,
   client or module.
 - `src/jarvis/llm/` — `contracts.py` (provider-neutral models, the `LLMProvider` Protocol,
-  `PrefixMismatchError`) and `router.py` (role -> provider from config, via a factory registry).
+  `LLMError` and its subclasses), `router.py` (role -> provider from config, via a factory
+  registry) and concrete providers (`*_provider.py`, e.g. `anthropic_provider.py`).
+- `src/jarvis/composition.py` — the composition root: registers provider factories and builds
+  the router.
 - `src/jarvis/modules/`, `src/jarvis/mac_agent/` — later phases.
 - `tests/fakes/` — `FakeProvider`, `FakeSecretStore`, in-memory keyring backend.
   `tests/conftest.py` installs that backend for every test.
@@ -38,7 +41,16 @@ Where things live:
 Project invariants to check (each one was decided on purpose):
 - Pydantic models use `strict=True, extra="forbid", frozen=True`. A model without them needs a
   stated reason.
-- Provider and model names appear only in YAML, never in `src/`. The router gets factories.
+- Model names appear only in YAML, never in `src/`. The router gets factories.
+- Provider names and SDKs may appear only in llm/anthropic_provider.py and composition.py; never
+  in core, router, contracts or config code.
+- `composition.py` is the only module allowed to import concrete providers
+  (`jarvis/llm/*_provider.py`). `tests/test_composition.py` enforces it.
+- `RoleModelConfig` fields stay provider-neutral (`max_tokens`, `effort`): each provider maps them
+  and rejects a value it can't honor when the router is built. No provider-specific keys in the
+  shared config.
+- `raw` on content blocks is provider-opaque: core never reads it. A provider sends assistant
+  blocks back exactly as its API returned them; no block (including `OpaqueBlock`) is dropped.
 - `contracts.py` is a leaf module: it imports nothing from `jarvis` (config imports `Role` from it,
   so any jarvis import there creates a cycle).
 - `LLMRequest` rejects: a tool call without a result in the next user message, a tool result that
@@ -86,7 +98,8 @@ Defect patterns already found in this repo (probe for them in every new model or
    - Any ADR in docs/adr/ that the changed files touch.
    - docs/behavior.md if prompts or model-facing behavior changed.
 3. Run the checks yourself, the same ones CI runs: `uv sync --locked`,
-   `uv run pre-commit run --all-files`, `uv run pytest -q`. Then `git diff --exit-code`: if
+   `uv run pre-commit run --all-files`, `uv run pytest -q`. Never run live tests (`-m live`,
+   `JARVIS_LIVE=1`): they read the real Keychain and spend money. Then `git diff --exit-code`: if
    pre-commit changed any file, that is a finding (report it, never fix it). Do not rely on CI
    status or on reported numbers.
 4. Probe. For every new public function, model or validator, write small throwaway scripts (run

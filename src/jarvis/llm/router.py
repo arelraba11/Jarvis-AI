@@ -1,7 +1,8 @@
 """ModelRouter: role -> provider, from the `models` section of config (ADR-0003).
 
-The router never imports or names a provider. Whoever builds it passes a registry of provider name
--> factory; the factory takes a model name and returns an `LLMProvider`.
+The router never imports or names a provider. Whoever builds it (jarvis.composition) passes a
+registry of provider name -> factory; the factory takes the role's `RoleModelConfig` (model,
+max_tokens, effort) and returns an `LLMProvider`.
 """
 
 from collections.abc import Callable, Mapping
@@ -9,7 +10,7 @@ from collections.abc import Callable, Mapping
 from jarvis.core.config import RoleModelConfig
 from jarvis.llm.contracts import LLMProvider, Role
 
-ProviderFactory = Callable[[str], LLMProvider]
+ProviderFactory = Callable[[RoleModelConfig], LLMProvider]
 
 
 class ModelRouterError(Exception):
@@ -33,9 +34,9 @@ class ModelRouter:
         self._providers: dict[Role, LLMProvider] = {}
         for role, config in models.items():
             try:
-                self._providers[role] = factories[config.provider](config.model)
-            # Any failure (a missing API key, say) is reported with the role and provider it
-            # belongs to; the original error stays attached as the cause.
+                self._providers[role] = factories[config.provider](config)
+            # Any failure (a missing API key, a value the provider can't honor) is reported with
+            # the role and provider it belongs to; the original error stays attached as the cause.
             except Exception as e:
                 raise ModelRouterError(
                     f"models.{role}: provider {config.provider!r} failed to start: {e}"

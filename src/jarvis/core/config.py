@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import yaml
 from pydantic import BaseModel, ConfigDict, Field, Strict, ValidationError, field_validator
 
-from jarvis.llm.contracts import Role
+from jarvis.llm.contracts import Effort, Role
 
 # src/jarvis/core/config.py -> repo root. Valid for the editable install `uv sync` makes.
 CONFIG_DIR = Path(__file__).resolve().parents[3] / "config"
@@ -57,6 +57,20 @@ class BudgetSettings(_Section):
 class RoleModelConfig(_Section):
     provider: str = Field(min_length=1)  # a name registered with ModelRouter, e.g. by a module
     model: str = Field(min_length=1)
+    # Provider-neutral: each provider maps these to its own API and rejects, when the router is
+    # built, a value it can't honor. Why these defaults: docs/systems/llm.md#config-keys.
+    max_tokens: int = Field(default=16_000, gt=0)
+    effort: Effort = "medium"
+
+
+class ModelPrices(_Section):
+    """USD per million tokens for one model. Cost math uses them from Phase 2 task 11."""
+
+    # inf or nan would make every cost check meaningless.
+    input_per_mtok: float = Field(ge=0, allow_inf_nan=False)
+    output_per_mtok: float = Field(ge=0, allow_inf_nan=False)
+    cache_write_per_mtok: float = Field(ge=0, allow_inf_nan=False)
+    cache_read_per_mtok: float = Field(ge=0, allow_inf_nan=False)
 
 
 # YAML keys are strings; strict mode would reject "planner" as a Role, so keys are parsed laxly.
@@ -69,6 +83,8 @@ class Settings(_Section):
     budget: BudgetSettings = Field(default_factory=BudgetSettings)
     # Empty in code: core names no provider or model (ADR-0003). default.yaml maps the planner.
     models: dict[_RoleKey, RoleModelConfig] = Field(default_factory=dict)
+    # Model name -> prices. Empty in code for the same reason as `models`.
+    prices: dict[Annotated[str, Field(min_length=1)], ModelPrices] = Field(default_factory=dict)
 
 
 def load_settings(config_dir: Path = CONFIG_DIR) -> Settings:

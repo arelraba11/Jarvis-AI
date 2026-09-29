@@ -8,6 +8,7 @@ The rule it enforces, for every thinking block in a request:
   not part of that prefix, so removing one does not change it.
 - Thinking blocks may be removed from the start, from the end, or all of them. A gap in the middle
   fails: each block records the one before it, and that one must still be the block before it.
+- Every other block (text, tool calls, results, `OpaqueBlock`) is part of the prefix.
 """
 
 import json
@@ -40,7 +41,7 @@ class FakeProvider:
     def __init__(self, responses: Iterable[LLMResponse]) -> None:
         self._script = list(responses)
         self._produced: dict[str, _Produced] = {}
-        keys = [_key(b) for r in self._script for b in _thinking(r.message.content)]
+        keys = [_key(b) for r in self._script if r.message for b in _thinking(r.message.content)]
         if len(keys) != len(set(keys)):
             raise AssertionError("scripted thinking blocks must be unique: give each its own text")
 
@@ -49,7 +50,8 @@ class FakeProvider:
         if not self._script:
             raise AssertionError("FakeProvider: no scripted responses left")
         response = self._script.pop(0)
-        self._record(request, response.message)
+        if response.message is not None:  # a refusal produces nothing to check later
+            self._record(request, response.message)
         return response
 
     def _check_prefix(self, request: LLMRequest) -> None:

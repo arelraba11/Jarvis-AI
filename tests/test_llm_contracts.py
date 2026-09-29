@@ -2,9 +2,17 @@ import pytest
 from pydantic import JsonValue, ValidationError
 
 from jarvis.llm.contracts import (
+    LLMAuthError,
+    LLMError,
+    LLMRateLimitError,
     LLMRequest,
+    LLMRequestError,
     LLMResponse,
+    LLMResponseError,
+    LLMUnavailableError,
     Message,
+    OpaqueBlock,
+    PrefixMismatchError,
     TextBlock,
     ThinkingBlock,
     ToolCall,
@@ -15,6 +23,7 @@ from jarvis.llm.contracts import (
 TOOL_CALL = ToolCall(id="call_1", name="get_current_time", arguments={})
 TOOL_RESULT = ToolResult(tool_call_id="call_1", content="10:42")
 THINKING = ThinkingBlock(raw={"type": "thinking", "thinking": "...", "signature": "sig"})
+OPAQUE = OpaqueBlock(raw={"type": "compaction", "content": "summary"})
 
 
 def user(text: str) -> Message:
@@ -31,11 +40,12 @@ def assistant(text: str) -> Message:
         # Only the model produces thinking and tool calls; only the user side returns tool results.
         ("user", THINKING),
         ("user", TOOL_CALL),
+        ("user", OPAQUE),
         ("assistant", TOOL_RESULT),
     ],
 )
 def test_message_rejects_a_block_its_role_cannot_carry(
-    role: str, block: ThinkingBlock | ToolCall | ToolResult
+    role: str, block: ThinkingBlock | ToolCall | ToolResult | OpaqueBlock
 ) -> None:
     with pytest.raises(ValidationError, match="cannot carry"):
         Message.model_validate({"role": role, "content": (block,)})
@@ -62,6 +72,33 @@ def test_thinking_block_round_trips_through_json_unchanged() -> None:
     block = restored.content[0]
     assert isinstance(block, ThinkingBlock)
     assert block.raw == raw
+
+
+def test_assistant_blocks_carry_the_providers_raw_block_through_json() -> None:
+    # A provider sends each assistant block back exactly as it returned it (ADR-0003), so text,
+    # tool calls and block types we don't model all keep the provider's raw block, in order.
+    text = TextBlock(text="רגע", raw={"type": "text", "text": "רגע", "citations": None})
+    tool_call = ToolCall(
+        id="call_1",
+        name="get_current_time",
+        arguments={},
+        raw={"type": "tool_use", "id": "call_1", "name": "get_current_time", "input": {}},
+    )
+    message = Message(role="assistant", content=(THINKING, text, OPAQUE, tool_call))
+    restored = Message.model_validate_json(message.model_dump_json())
+    assert restored == message
+    assert [b.raw for b in restored.content if not isinstance(b, ToolResult)] == [
+        THINKING.raw,
+        text.raw,
+        OPAQUE.raw,
+        tool_call.raw,
+    ]
+
+
+def test_raw_is_optional_on_text_and_tool_calls() -> None:
+    # Core and FakeProvider build blocks with no provider behind them.
+    assert TextBlock(text="hi").raw is None
+    assert ToolCall(id="c", name="n", arguments={}).raw is None
 
 
 def test_request_rejects_empty_messages() -> None:
@@ -155,7 +192,44 @@ def test_tool_use_stop_reason_requires_a_tool_call() -> None:
 def test_tool_use_response_with_a_tool_call_is_valid() -> None:
     message = Message(role="assistant", content=(THINKING, TOOL_CALL))
     response = LLMResponse(message=message, stop_reason="tool_use", usage=Usage(), model="m")
+    assert response.message is not None
     assert response.message.content[1] == TOOL_CALL
+
+
+def test_a_refusal_has_no_message() -> None:
+    # A refusal can come before any output (empty content) or after partial output, which must
+    # be discarded; either way nothing of it may enter the history.
+    response = LLMResponse(message=None, stop_reason="refusal", usage=Usage(), model="m")
+    assert response.message is None
+
+
+def test_a_refusal_with_a_message_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="a refusal carries no message"):
+        LLMResponse(message=assistant("partial"), stop_reason="refusal", usage=Usage(), model="m")
+
+
+@pytest.mark.parametrize("stop_reason", ["end_turn", "tool_use", "max_tokens"])
+def test_a_response_other_than_a_refusal_needs_a_message(stop_reason: str) -> None:
+    with pytest.raises(ValidationError, match=f"stop_reason {stop_reason} needs a message"):
+        LLMResponse.model_validate(
+            {"message": None, "stop_reason": stop_reason, "usage": Usage(), "model": "m"}
+        )
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        PrefixMismatchError,
+        LLMAuthError,
+        LLMRateLimitError,
+        LLMUnavailableError,
+        LLMRequestError,
+        LLMResponseError,
+    ],
+)
+def test_every_provider_error_is_an_llm_error(error: type[Exception]) -> None:
+    # The loop catches LLMError without knowing which provider raised it.
+    assert issubclass(error, LLMError)
 
 
 @pytest.mark.parametrize(
