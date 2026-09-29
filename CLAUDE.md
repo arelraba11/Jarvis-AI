@@ -17,6 +17,7 @@ Read only what the task needs (no `@imports`, so nothing loads by default):
 | Working on | Read |
 | --- | --- |
 | Design or cross-cutting changes | `docs/design.md`, `docs/architecture.md` |
+| Jarvis behavior, planner system prompt, judge rubrics | `docs/behavior.md` |
 | The current phase's tasks | `docs/plan/README.md`, then `docs/plan/phase-N-*.md` |
 | Agent loop, time/date tools | `docs/systems/orchestrator.md` |
 | Tool levels, approvals, external content | `docs/systems/permissions.md` |

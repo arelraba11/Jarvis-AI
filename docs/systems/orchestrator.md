@@ -36,6 +36,16 @@ prompt. It is written in [Phase 2](../plan/phase-2-core-cli.md), task 0.
 - `resolve_date(...)` turns a structured relative date into an exact date in the user's timezone.
   - Inputs: offset in days or weeks, target weekday, or a period boundary such as end of month.
   - Outputs: the exact date and the days until it.
+  - How inputs combine. Weeks start on `UserSettings.week_start` (default `sunday`,
+    [config](infra.md#config)); "today" is the current date in the user's timezone.
+    - `weeks=N` + `weekday=W`: day W in the week that starts N weeks after the start of the
+      current week.
+    - `days=N`: today + N days.
+    - `weekday=W` alone: the next W after today; today is excluded, so "Thursday" asked on a
+      Thursday means a week later.
+  - Example (today = Friday 2026-10-02, weeks start on Sunday): `weeks=2, weekday=thursday` →
+    2026-10-15 (the week starting Sunday 2026-10-11). The other reading, "+14 days, then the next
+    Thursday", would give 2026-10-22; `resolve_date` uses the week-based reading.
 
 ## Contracts
 
@@ -57,7 +67,9 @@ prompt. It is written in [Phase 2](../plan/phase-2-core-cli.md), task 0.
 
 ## Open questions
 
-- None beyond the config key names above.
+- Config key names above.
+- `resolve_date`: the result of `weeks=N` without a weekday, and of `days` combined with other
+  inputs, is not defined yet.
 
 ## Introduced in phase
 
