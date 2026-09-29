@@ -40,9 +40,16 @@ prompt. It is written in [Phase 2](../plan/phase-2-core-cli.md), task 0.
     [config](infra.md#config)); "today" is the current date in the user's timezone.
     - `weeks=N` + `weekday=W`: day W in the week that starts N weeks after the start of the
       current week.
-    - `days=N`: today + N days.
+    - `weeks=N` alone: `weekday` defaults to today's weekday, so the same rule gives today + 7N
+      days. One rule, no special case.
+    - `days=N`: today + N days. `days` is exclusive: combined with `weeks` or `weekday`, it is a
+      validation error.
     - `weekday=W` alone: the next W after today; today is excluded, so "Thursday" asked on a
       Thursday means a week later.
+    - A period boundary (such as `end_of_month`) is exclusive with every other input; any
+      combination is a validation error.
+    - A validation error is returned to the model as a tool error (the loop passes a tool's
+      error back to the model, see Responsibilities), so the model can retry with valid inputs.
   - Example (today = Friday 2026-10-02, weeks start on Sunday): `weeks=2, weekday=thursday` →
     2026-10-15 (the week starting Sunday 2026-10-11). The other reading, "+14 days, then the next
     Thursday", would give 2026-10-22; `resolve_date` uses the week-based reading.
@@ -68,8 +75,6 @@ prompt. It is written in [Phase 2](../plan/phase-2-core-cli.md), task 0.
 ## Open questions
 
 - Config key names above.
-- `resolve_date`: the result of `weeks=N` without a weekday, and of `days` combined with other
-  inputs, is not defined yet.
 
 ## Introduced in phase
 
