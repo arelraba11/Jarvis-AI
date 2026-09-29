@@ -6,6 +6,7 @@ the preserved-thinking controls: no tool runner and no agent helpers, because th
 A concrete provider: only `jarvis.composition` imports this module (docs/systems/llm.md).
 """
 
+import json
 from collections.abc import Callable
 from typing import Final, cast, get_args
 
@@ -150,17 +151,12 @@ class AnthropicProvider:
         except (AttributeError, ValidationError) as e:  # no usage object, or bad counts
             raise LLMResponseError(f"anthropic: response without valid usage {where}") from e
         stop = message.stop_reason
-        if stop not in _STOP_REASONS:
+        if not isinstance(stop, str) or stop not in _STOP_REASONS:
             # The call was billed: keep its usage for the cost log.
             raise LLMResponseError(f"anthropic: unsupported stop_reason {stop!r} {where}", usage)
-        # The blocks exactly as the API sent them, to be sent back unchanged (preserved thinking).
         try:
+            # The blocks exactly as the API sent them, to be sent back unchanged.
             raw_blocks = _RAW_BLOCKS.validate_python(body.get("content"))
-        except ValidationError as e:
-            raise LLMResponseError(
-                f"anthropic: response content is not a list of blocks {where}"
-            ) from e
-        try:
             blocks = [_block(raw) for raw in raw_blocks]
             # A refusal's partial output is discarded (Anthropic's docs); nothing enters history.
             content = (
@@ -174,9 +170,14 @@ class AnthropicProvider:
                 usage=usage,
                 model=message.model,
             )
-        except ValidationError as e:
-            problems = "; ".join(err["msg"] for err in e.errors())
-            raise LLMResponseError(f"anthropic: invalid response {where}: {problems}") from e
+        except ValueError as e:  # includes pydantic's ValidationError
+            problems = (
+                "; ".join(err["msg"] for err in e.errors())
+                if isinstance(e, ValidationError)
+                else str(e)
+            )
+            # Every failure after usage is known keeps it: the call was billed.
+            raise LLMResponseError(f"anthropic: invalid response {where}: {problems}", usage) from e
 
     def _error(self, e: anthropic.APIError) -> LLMError:
         kind: type[LLMError]
@@ -270,10 +271,15 @@ def _raw_if_unchanged(
     What LLMRequest validated is what gets sent: a block edited after the API returned it goes out
     as edited, so the API (like FakeProvider) sees the edit, never a stale raw block.
     """
-    if raw is not None and all(raw.get(k) == v for k, v in block.items()):
+    # Compared as JSON, so a type change is an edit too (in Python, True == 1 == 1.0).
+    if raw is not None and all(_json(raw.get(k)) == _json(v) for k, v in block.items()):
         # cast: the API's own block, with fields we don't model, sent back as it returned it.
         return cast(BetaContentBlockParam, raw)
     return block
+
+
+def _json(value: object) -> str:
+    return json.dumps(value, sort_keys=True)
 
 
 def _block(raw: RawBlock) -> ContentBlock:
@@ -285,12 +291,12 @@ def _block(raw: RawBlock) -> ContentBlock:
         case "text":
             text = raw.get("text")
             if not isinstance(text, str):
-                raise LLMResponseError(f"anthropic: text block without text: {raw!r}")
+                raise ValueError(f"text block without text: {raw!r}")
             return TextBlock(text=text, raw=raw)
         case "tool_use":
             call_id, name = raw.get("id"), raw.get("name")
             if not isinstance(call_id, str) or not isinstance(name, str):
-                raise LLMResponseError(f"anthropic: tool_use block without id or name: {raw!r}")
+                raise ValueError(f"tool_use block without id or name: {raw!r}")
             return ToolCall(
                 id=call_id,
                 name=name,

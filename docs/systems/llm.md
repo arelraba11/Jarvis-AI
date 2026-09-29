@@ -137,7 +137,11 @@ helpers.
 - **Tests:** mapping tests against hand-built fixtures (`tests/fixtures/anthropic/`, shapes from
   the docs) through a mock HTTP transport; live smoke tests behind the `live` marker
   plus `JARVIS_LIVE=1`, so no other `-m` expression runs them by accident
-  (`JARVIS_LIVE=1 uv run pytest -m live -s`); never in CI. They read the real Keychain key.
+  (`JARVIS_LIVE=1 uv run pytest -m live -s`); never in CI. They read the real Keychain key. Each live
+  exchange also confirms the preserved-thinking controls took effect (beta header and
+  `block_binding: error` sent, `input_transformations: []` returned); the thinking-replay test
+  fails, instead of skipping, if the model produces no thinking block; and a negative test
+  expects the real API to reject an edited history with `PrefixMismatchError`.
 
 ## Decisions
 

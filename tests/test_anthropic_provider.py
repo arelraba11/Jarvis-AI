@@ -301,6 +301,30 @@ def test_an_edited_assistant_block_is_sent_as_edited_not_as_its_stale_raw_block(
     }
 
 
+@pytest.mark.parametrize(
+    ("edited", "raw_value"), [(True, 1), (1, True), (1.0, 1), (1, 1.0)], ids=repr
+)
+def test_raw_agrees_only_when_types_match_too(edited: object, raw_value: object) -> None:
+    # Python's True == 1 == 1.0 must not hide an edit: what LLMRequest validated is what is sent.
+    api = FakeApi(ok(fixture("thinking_text.json")))
+    call = ToolCall.model_validate(
+        {
+            "id": "c1",
+            "name": "set",
+            "arguments": {"n": edited},
+            "raw": {"type": "tool_use", "id": "c1", "name": "set", "input": {"n": raw_value}},
+        }
+    )
+    messages = (
+        user("q"),
+        Message(role="assistant", content=(call,)),
+        user(ToolResult(tool_call_id="c1", content="ok")),
+    )
+    complete(build(api), request(*messages))
+    sent = api.body()["messages"][1]["content"][0]
+    assert json.dumps(sent["input"]) == json.dumps({"n": edited})
+
+
 # --- Response mapping -----------------------------------------------------------------------
 
 
@@ -422,6 +446,36 @@ def test_a_malformed_200_response_is_a_response_error(reply: httpx2.Response) ->
     # The loop catches LLMError; a broken response must not escape as AttributeError & co.
     with pytest.raises(LLMResponseError, match="anthropic"):
         complete(build(FakeApi(reply)), request(user("q")))
+
+
+def test_a_stop_reason_that_is_not_a_string_is_a_response_error() -> None:
+    body = fixture("thinking_text.json") | {"stop_reason": ["x"]}
+    with pytest.raises(LLMResponseError, match="unsupported stop_reason"):
+        complete(build(FakeApi(ok(body))), request(user("q")))
+
+
+THINKING_TEXT_USAGE = Usage(input_tokens=21, output_tokens=57, cache_read_tokens=1843)
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        pytest.param([], id="empty-end-turn"),
+        pytest.param([1], id="block-not-an-object"),
+        pytest.param([{"type": "text"}], id="text-without-text"),
+        pytest.param(
+            [{"type": "tool_use", "id": "t1", "name": "n", "input": [1]}],
+            id="tool-input-not-object",
+        ),
+        pytest.param("not a list", id="content-not-a-list"),
+    ],
+)
+def test_every_response_error_after_usage_is_known_keeps_the_usage(content: object) -> None:
+    # The call was billed either way; task 11 must be able to cost it.
+    body = fixture("thinking_text.json") | {"content": content}
+    with pytest.raises(LLMResponseError) as exc:
+        complete(build(FakeApi(ok(body))), request(user("q")))
+    assert exc.value.usage == THINKING_TEXT_USAGE
 
 
 def test_an_empty_answer_that_is_not_a_refusal_is_an_error() -> None:
