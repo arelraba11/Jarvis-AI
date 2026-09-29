@@ -21,8 +21,8 @@ chosen by role, a cost log and tracing.
 - **Config:** `Settings`, `UserSettings` → [infra](../systems/infra.md#contracts);
   `BudgetSettings`, `RoleModelConfig` → [LLM](../systems/llm.md#config-keys);
   `AgentLimits` → [orchestrator](../systems/orchestrator.md#contracts).
-- **LLM:** `Role`, `Message`, `ToolCall`, `ToolResult`, `LLMRequest`, `LLMResponse`, `Usage`,
-  `LLMProvider`, `PrefixMismatchError`, `ModelRouter` → [LLM](../systems/llm.md#contracts).
+- **LLM:** `Role`, `Message`, `ToolCall`, `ToolResult`, `ToolDefinition`, `LLMRequest`,
+  `LLMResponse`, `Usage`, `LLMProvider`, `PrefixMismatchError`, `ModelRouter` → [LLM](../systems/llm.md#contracts).
 - **Tools:** `PermissionLevel` → [permissions](../systems/permissions.md#contracts);
   `ToolSpec`, `Tool`, `ToolRegistry`, `@tool` → [modules](../systems/modules.md#contracts).
 - **Agent:** `AgentRun`, `RunResult`, `Orchestrator` → [orchestrator](../systems/orchestrator.md#contracts).
@@ -55,15 +55,15 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
    - `FakeProvider` enforces the same prefix check as the real API
      ([ADR-0003](../adr/0003-llm-layer.md)): for every thinking block it produced, the `system`
      prompt, the tools and the messages before that block must be unchanged in later calls. It
-     allows what the API allows (removing a leading run of thinking blocks, oldest first) and raises
-     `PrefixMismatchError`, the error the real provider raises, otherwise. So a history bug fails in
-     unit tests, not against the real API.
+     allows what the API allows (removing thinking blocks from the start, from the end, or all of
+     them; only a gap in the middle fails) and raises `PrefixMismatchError`, the error the real
+     provider raises, otherwise. So a history bug fails in unit tests, not against the real API.
 
    Tests:
    - Model validation; the fake satisfies the Protocol (checked by mypy).
    - The fake raises `PrefixMismatchError` when the system prompt, the tools or an earlier message
      changes, or when a thinking block is removed from the middle; it accepts an append-only history
-     and one whose leading thinking blocks were removed.
+     and one whose leading or trailing thinking blocks were removed.
 3. **`ModelRouter`.** Role → provider from `RoleModelConfig`.
    Tests: a configured role resolves; a missing role fails with a clear error.
 4. **`SecretStore`.** Protocol, keyring implementation, in-memory fake. The first real provider

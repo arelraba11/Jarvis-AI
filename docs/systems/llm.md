@@ -34,11 +34,12 @@ run locally on the M4 Pro, the rest through APIs.
 | Contract | Kind | Definition |
 |---|---|---|
 | `Role` | enum | `planner`, `writer`, `classifier`, `embeddings`, `memory` |
-| `Message`, `ToolCall`, `ToolResult` | models | Conversation content sent to and from a provider |
+| `Message`, `ToolCall`, `ToolResult` | models | Conversation content sent to and from a provider. A `Message` holds content blocks: `TextBlock`, `ThinkingBlock` (the provider's block, carried opaquely and sent back unchanged), `ToolCall`, `ToolResult` |
+| `ToolDefinition` | model | A tool as offered to the model: name, description, JSON schema. No permission level: core enforces that, not the model |
 | `LLMRequest`, `LLMResponse` | models | One provider call, including tool calls |
 | `Usage` | model | Token usage of one call |
-| `LLMProvider` | Protocol | One implementation per provider |
-| `PrefixMismatchError` | exception | A provider rejected a request because history before a thinking block changed ([ADR-0003](../adr/0003-llm-layer.md)); `FakeProvider` raises it too |
+| `LLMProvider` | Protocol | One implementation per provider: `async complete(LLMRequest) -> LLMResponse` |
+| `PrefixMismatchError` | exception | A provider rejected a request because history before a kept thinking block changed, or a thinking block was removed from the middle (removing from the start, from the end, or all of them is allowed; [ADR-0003](../adr/0003-llm-layer.md)); `FakeProvider` raises it too |
 | `ModelRouter` | class | Role → provider, from `RoleModelConfig` |
 | `UsageRecord` | model | Cost, role, module, run id, `user_id`; computed from `Usage` and per-model prices |
 | `CostLedger` | Protocol | Where `UsageRecord`s are written |
