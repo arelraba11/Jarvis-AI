@@ -32,6 +32,10 @@ chosen by role, a cost log and tracing.
 - **Evals:** `EvalCase`, `EvalResult`, `Grader` → [evals](../systems/evals.md#contracts).
 
 ## Tasks
+
+**Status (2026-09-29):** tasks 0–4 ✅ done. Task 5 🔍 in review (PR 18). Task 5a (record real
+Anthropic fixtures, added by PR 18) pending. Task 6 ⏭️ next. Tasks 7–15 not started.
+
 The order is chosen so `jarvis chat` works at task 7; everything after that makes it more capable.
 
 0. **Behavior spec: `docs/behavior.md`.** It covers:
