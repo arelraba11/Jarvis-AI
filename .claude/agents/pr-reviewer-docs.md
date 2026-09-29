@@ -1,11 +1,11 @@
 ---
-name: pr-reviewer
-description: Independent reviewer for a pull request that changes code (any .py file, including hooks and tests). Use once the PR is final and CI is green. Pass only the PR number, the plan task and, for a delta review, the previous reviewed head and that report's findings verbatim; never a summary of the work.
+name: pr-reviewer-docs
+description: Independent reviewer for a pull request that changes only docs, config comments or agent/tooling files with no .py change. Use once the PR is final and CI is green. Pass only the PR number, the plan task and, for a delta review, the previous reviewed head and that report's findings verbatim; never a summary of the work.
 tools: Read, Grep, Glob, Bash, WebFetch
 disallowedTools: Edit, Write, NotebookEdit
 maxTurns: 25
-model: opus
-effort: high
+model: sonnet
+effort: medium
 isolation: worktree
 color: orange
 # The review procedure lives in the pr-review skill, shared by every reviewer tier.

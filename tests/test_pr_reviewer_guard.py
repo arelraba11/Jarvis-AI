@@ -13,7 +13,14 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 GUARD = ROOT / ".claude" / "hooks" / "pr_reviewer_guard.py"
-AGENT = ROOT / ".claude" / "agents" / "pr-reviewer.md"
+AGENTS = ROOT / ".claude" / "agents"
+# Reviewer tiers (CLAUDE.md): one agent file each, differing only in model and effort, all
+# preloading the same review procedure from the pr-review skill.
+TIERS = {
+    "pr-reviewer": ("opus", "high"),
+    "pr-reviewer-docs": ("sonnet", "medium"),
+    "pr-reviewer-deep": ("opus", "xhigh"),
+}
 
 
 def run_guard(stdin: str) -> subprocess.CompletedProcess[str]:
@@ -100,13 +107,47 @@ def test_unreadable_input_fails_closed(stdin: str) -> None:
     assert "cannot read hook input" in result.stderr
 
 
-def test_agent_frontmatter_wires_the_guard() -> None:
-    frontmatter = AGENT.read_text().split("---")[1]
-    config = yaml.safe_load(frontmatter)
-    (entry,) = config["hooks"]["PreToolUse"]
+def frontmatter(agent: str) -> dict[str, object]:
+    config: dict[str, object] = yaml.safe_load((AGENTS / f"{agent}.md").read_text().split("---")[1])
+    return config
+
+
+@pytest.mark.parametrize("agent", TIERS)
+def test_agent_frontmatter_wires_the_guard(agent: str) -> None:
+    config = frontmatter(agent)
+    hooks = config["hooks"]
+    assert isinstance(hooks, dict)
+    (entry,) = hooks["PreToolUse"]
     (hook,) = entry["hooks"]
     assert entry["matcher"] == "Bash"
     assert hook["type"] == "command"
     assert "/.claude/hooks/pr_reviewer_guard.py" in hook["command"]
     # Fail closed when python3 or the script is missing.
     assert hook["command"].endswith("|| exit 2")
+
+
+@pytest.mark.parametrize(("agent", "tier"), TIERS.items())
+def test_each_tier_sets_its_model_and_effort_and_shares_the_review_skill(
+    agent: str, tier: tuple[str, str]
+) -> None:
+    config = frontmatter(agent)
+    assert (config["model"], config["effort"]) == tier
+    assert config["maxTurns"] == 25
+    assert config["skills"] == ["pr-review"]
+    # Everything but the tier is identical across the files.
+    shared = {
+        k: v for k, v in config.items() if k not in ("name", "description", "model", "effort")
+    }
+    assert shared == {
+        k: v
+        for k, v in frontmatter("pr-reviewer").items()
+        if k not in ("name", "description", "model", "effort")
+    }
+
+
+def test_the_review_skill_is_hidden_from_the_slash_menu_and_preloadable() -> None:
+    text = (ROOT / ".claude" / "skills" / "pr-review" / "SKILL.md").read_text()
+    config = yaml.safe_load(text.split("---")[1])
+    assert config["user-invocable"] is False
+    # disable-model-invocation would stop it from being preloaded into the agents.
+    assert "disable-model-invocation" not in config
