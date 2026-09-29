@@ -1,5 +1,8 @@
 """LLM contracts: what code sends to a provider and gets back (docs/systems/llm.md#contracts).
 
+A leaf module: it imports nothing from jarvis. config imports Role from it and the router imports
+config, so any jarvis import here creates a cycle.
+
 Provider-neutral: each provider maps these to and from its own API. Code asks for a `Role`, never a
 model; `ModelRouter` (task 3) resolves the role to an `LLMProvider`.
 """

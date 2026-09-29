@@ -6,11 +6,13 @@ Unknown keys and wrong types are rejected with an error that names the file and 
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, Strict, ValidationError, field_validator
+
+from jarvis.llm.contracts import Role
 
 # src/jarvis/core/config.py -> repo root. Valid for the editable install `uv sync` makes.
 CONFIG_DIR = Path(__file__).resolve().parents[3] / "config"
@@ -52,9 +54,21 @@ class BudgetSettings(_Section):
     daily_cap_usd: float = Field(default=3.0, gt=0, allow_inf_nan=False)
 
 
+class RoleModelConfig(_Section):
+    provider: str = Field(min_length=1)  # a name registered with ModelRouter, e.g. by a module
+    model: str = Field(min_length=1)
+
+
+# YAML keys are strings; strict mode would reject "planner" as a Role, so keys are parsed laxly.
+# An unknown role name still fails, listing the valid ones.
+_RoleKey = Annotated[Role, Strict(False)]
+
+
 class Settings(_Section):
     user: UserSettings = Field(default_factory=UserSettings)
     budget: BudgetSettings = Field(default_factory=BudgetSettings)
+    # Empty in code: core names no provider or model (ADR-0003). default.yaml maps the planner.
+    models: dict[_RoleKey, RoleModelConfig] = Field(default_factory=dict)
 
 
 def load_settings(config_dir: Path = CONFIG_DIR) -> Settings:

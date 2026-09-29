@@ -36,6 +36,10 @@ target-version = "py313"
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
 
+[tool.ruff.lint.isort]
+# fakes lives in tests/, where ruff can't detect it as ours.
+known-first-party = ["jarvis", "fakes"]
+
 [tool.mypy]
 python_version = "3.13"
 strict = true
