@@ -9,7 +9,7 @@ run locally on the M4 Pro, the rest through APIs.
 
 | Role | Used for | Where |
 |---|---|---|
-| `planner` | The orchestrator: understanding a request and choosing tools | API, strong model |
+| `planner` | The orchestrator: understanding a request and choosing tools | API, strong model (for now `claude-sonnet-5-5`, [ADR-0003](../adr/0003-llm-layer.md)) |
 | `writer` | Email drafts and summaries | API |
 | `classifier` | Classifying emails and events by importance | Local |
 | `embeddings` | Semantic search in memory and email | Local, multilingual model |
@@ -52,13 +52,13 @@ run locally on the M4 Pro, the rest through APIs.
 
 ## Decisions
 
-- ADR-0003 — LLM layer: roles, `ModelRouter`, and the first `planner` provider (planned, Phase 2).
+- [ADR-0003](../adr/0003-llm-layer.md) — LLM layer: roles, `ModelRouter`, and the first `planner`
+  provider: Anthropic, `claude-sonnet-5-5` (Accepted).
 
 ## Open questions
 
 - Models per role, local or API: see [open decisions](../design.md#open-decisions).
 - Monthly budget: see [open decisions](../design.md#open-decisions).
-- Which API provider and model for `planner` in Phase 2: choose one for now; the eval set decides later.
 
 ## Introduced in phase
 

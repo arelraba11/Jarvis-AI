@@ -88,7 +88,7 @@ The single list of open design decisions. Each closes with an ADR.
 |---|---|---|---|
 | Voice approach | Realtime model, or a transcription → LLM → speech pipeline | [voice](systems/voice.md) | Phase 1 (ADR-0002) |
 | Monthly budget | — | [LLM](systems/llm.md) | After two weeks of measurement |
-| Models per role | Local or API, by the Hebrew eval set | [LLM](systems/llm.md) | — |
+| Models per role | Local or API, by the Hebrew eval set | [LLM](systems/llm.md) | — (`planner` for now: ADR-0003) |
 | Langfuse | Cloud (simple, but email content leaves the Mac) or self-hosted on the Mac (private, but one more service to maintain) | [infra](systems/infra.md#observability) | Before Phase 3 (ADR-0006) |
 | Postgres | Docker or Homebrew | [infra](systems/infra.md#storage) | — |
 | When and how 24/7 | A cloud VM or an always-on computer (e.g. a Mac mini) | [infra](systems/infra.md#ci-and-updates) | Opened when the phone is connected |

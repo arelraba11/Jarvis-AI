@@ -59,7 +59,15 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
    needs its API key from here.
    Tests: the fake round-trips a secret; the keyring implementation runs only against keyring's
    fake/null backend, never the real Keychain.
-5. **First real provider (`planner`).** Maps `LLMRequest`/`LLMResponse`, including tool calls and usage.
+5. **First real provider (`planner`).** Anthropic, `claude-sonnet-5-5`
+   ([ADR-0003](../adr/0003-llm-layer.md)). Maps `LLMRequest`/`LLMResponse`, including tool calls and usage.
+   - The official `anthropic` SDK is a new dependency: ask before adding it. If approved, it is used
+     only as a typed client for `messages.create`. No tool runner, no agent helpers: the loop is ours.
+   - Model prices go in config from Anthropic's pricing page at the time this task is done, not from
+     the ADR.
+   - Respect the API constraints listed in ADR-0003's consequences (append-only history, `auto`
+     tool choice, `refusal` stop reason).
+
    Tests: mapping against recorded response fixtures, with no network; a manual smoke test on the real API.
 6. **Minimal loop.** `Orchestrator` with no tools yet: system prompt from `docs/behavior.md` +
    history + request → the model → the answer.
@@ -147,15 +155,17 @@ extra tools for its run.
 ## Risks and open questions
 - **Hebrew in the terminal:** right-to-left text displays poorly in most terminals. This affects
   readability only, not correctness.
-- **`planner` provider and model:** see [LLM](../systems/llm.md#open-questions).
-- **Judge model, judge reliability, eval CI trigger:** see [evals](../systems/evals.md#open-questions).
+- **Judge reliability, eval CI trigger:** see [evals](../systems/evals.md#open-questions). The judge
+  model is decided ([evals config keys](../systems/evals.md#config-keys)).
 - **Where the cost log is stored:** file-based until Phase 7, per ADR-0005 ([storage](../systems/infra.md#storage)).
 - **Langfuse Cloud vs self-hosted:** decide before Phase 3 ([infra](../systems/infra.md#open-questions)).
 
 ## ADRs to write
-- ADR-0003 — LLM layer: roles, `ModelRouter`, and the first `planner` provider.
+- [ADR-0003](../adr/0003-llm-layer.md) — LLM layer: roles, `ModelRouter`, and the first `planner`
+  provider. Written (Accepted).
 - ADR-0004 — Where tool permissions are enforced: the loop calls the permission gate; the gate belongs to [permissions](../systems/permissions.md) (planned, Phase 2).
 - ADR-0005 — File-based stores until Postgres: the cost log in this phase, accounts in Phase 3
   ([storage](../systems/infra.md#storage)).
 - ADR-0006 — Langfuse deployment (Cloud or self-hosted). This closes an [open decision](../design.md#open-decisions).
-- ADR-0007 — Evals: case format, deterministic checks, the LLM judge and its model.
+- ADR-0007 — Evals: case format, deterministic checks, the LLM judge and its model (the judge is
+  decided in [evals](../systems/evals.md#config-keys); the ADR records it).

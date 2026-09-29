@@ -38,16 +38,21 @@ Per-role model-choice eval sets are described in [LLM](llm.md).
 
 ## Config keys
 
-- The judge model. Proposal: an eval-only setting in the eval config, kept out of `Role`.
+- The judge model: an eval-only setting in the eval config, not a `Role`.
+  - A Gemini model, from a different vendor than the `planner`
+    ([ADR-0003](../adr/0003-llm-layer.md)), to reduce self-preference bias.
+  - The exact model is chosen in [Phase 2](../plan/phase-2-core-cli.md) task 14. Start with Gemini
+    Flash, since rubric items are short and binary. Move to Pro only if re-runs show the judge is
+    inconsistent.
 - Open question: key names are not specified yet.
 
 ## Decisions
 
-- ADR-0007 — Evals: case format, deterministic checks, the LLM judge and its model (planned, Phase 2).
+- ADR-0007 — Evals: case format, deterministic checks, the LLM judge and its model (planned, Phase 2,
+  task 15). It records the judge decision above.
 
 ## Open questions
 
-- Which model is the judge (see the proposal above).
 - The CI trigger for evals: a path filter or manual. Decided once the runner exists.
 
 ## Introduced in phase
