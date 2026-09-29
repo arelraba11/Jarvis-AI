@@ -94,9 +94,11 @@ CI runs on Linux, so when Mac-only code arrives:
   plan task number: no summary, no self-assessment.
 - Fix every CONFIRMED blocker or major finding in the same PR and re-run the reviewer. For findings
   you disagree with, say why.
-- Include the reviewer's final report verbatim in your report to the user.
+- Include the reviewer's final report verbatim in your report to the user. Its "Reviewed head" must
+  equal the PR head; otherwise re-run. A report that hits maxTurns without a verdict counts as not
+  reviewed: resume the reviewer.
 - When a review finds a new defect pattern, propose adding it to the agent's "Defect patterns" list
   in a separate PR.
-- The reviewer never replaces the user's approval to merge code PRs.
+- The reviewer's verdict never merges any PR: every PR waits for the user's approval.
 - The user is learning: explain each decision briefly (the *why*, one or two sentences).
 - Never add Co-Authored-By or "Generated with" lines to commits or PR
