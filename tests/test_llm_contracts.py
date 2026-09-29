@@ -74,6 +74,74 @@ def test_request_must_start_with_a_user_message() -> None:
         LLMRequest(system="s", messages=(assistant("hi"), user("hi")))
 
 
+def call(call_id: str) -> ToolCall:
+    return ToolCall(id=call_id, name="get_current_time", arguments={})
+
+
+def result(call_id: str) -> ToolResult:
+    return ToolResult(tool_call_id=call_id, content="10:42")
+
+
+def turn(role: str, *blocks: TextBlock | ToolCall | ToolResult) -> Message:
+    return Message.model_validate({"role": role, "content": blocks})
+
+
+def test_request_accepts_tool_calls_answered_in_the_next_message() -> None:
+    # Results may come in any order, and text may follow them.
+    messages = (
+        user("what time is it here and in London?"),
+        turn("assistant", TextBlock(text="checking"), call("a"), call("b")),
+        turn("user", result("b"), result("a"), TextBlock(text="and?")),
+    )
+    assert LLMRequest(system="s", messages=messages).messages == messages
+
+
+@pytest.mark.parametrize(
+    ("messages", "expected"),
+    [
+        pytest.param(
+            (user("q"), turn("assistant", call("a")), user("q2")),
+            r"messages\[1\]: tool call 'a' has no result in the next message",
+            id="call-unanswered",
+        ),
+        pytest.param(
+            (user("q"), turn("assistant", call("a"), call("b")), turn("user", result("a"))),
+            r"messages\[1\]: tool call 'b' has no result in the next message",
+            id="call-partly-answered",
+        ),
+        pytest.param(
+            (user("q"), assistant("hi"), turn("user", result("x"))),
+            r"messages\[2\]: tool result 'x' matches no tool call in the previous message",
+            id="result-orphan",
+        ),
+        pytest.param(
+            (turn("user", result("x")),),
+            r"messages\[0\]: tool result 'x' matches no tool call in the previous message",
+            id="result-in-first-message",
+        ),
+        pytest.param(
+            (
+                user("q"),
+                turn("assistant", call("a")),
+                turn("user", result("a")),
+                assistant("10:42"),
+                turn("user", result("a")),
+            ),
+            r"messages\[4\]: tool result 'a' matches no tool call in the previous message",
+            id="result-for-an-older-call",
+        ),
+        pytest.param(
+            (user("q"), assistant("hi")),
+            "the last message must be from the user",
+            id="ends-on-assistant",
+        ),
+    ],
+)
+def test_request_rejects_an_invalid_history(messages: tuple[Message, ...], expected: str) -> None:
+    with pytest.raises(ValidationError, match=expected):
+        LLMRequest(system="s", messages=messages)
+
+
 def test_response_message_must_be_from_the_assistant() -> None:
     with pytest.raises(ValidationError, match="must be from the assistant"):
         LLMResponse(message=user("hi"), stop_reason="end_turn", usage=Usage(), model="m")

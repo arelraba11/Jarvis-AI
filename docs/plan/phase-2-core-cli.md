@@ -82,6 +82,8 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
      `thinking-binding-controls-2026-08-01` beta header and adaptive thinking), so the check doesn't
      depend on the account's creation date. Never `"drop_block"`: it hides bugs. The API's 400 for a
      mismatch maps to `PrefixMismatchError`.
+   - A stop reason outside `StopReason` (one the API adds later, say) maps to an explicit error that
+     names it; the provider never crashes on it or guesses a meaning.
 
    Tests: mapping against recorded response fixtures, with no network; a manual smoke test on the real API.
 6. **Minimal loop.** `Orchestrator` with no tools yet: system prompt from `docs/behavior.md` +

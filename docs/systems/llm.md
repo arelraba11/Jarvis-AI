@@ -45,6 +45,15 @@ run locally on the M4 Pro, the rest through APIs.
 | `CostLedger` | Protocol | Where `UsageRecord`s are written |
 | `DailyBudgetGuard` | class | Refuses a new run once the daily cap is reached |
 
+`LLMRequest` rejects a history that no provider would accept, so a loop bug (from
+[Phase 2](../plan/phase-2-core-cli.md) task 8 on) fails in unit tests, not as a 400 from the API:
+
+- The first message is from the user. So is the last: the loop never sends a request that ends on
+  an assistant turn (our rule, not an API one).
+- Every `ToolCall` has its `ToolResult` in the very next message, and every `ToolResult` answers a
+  `ToolCall` in the message right before it. Anthropic and OpenAI both require this, so it is
+  provider-neutral.
+
 ## Config keys
 
 - `RoleModelConfig`: role → provider and model.

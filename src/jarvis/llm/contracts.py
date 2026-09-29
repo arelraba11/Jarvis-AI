@@ -92,9 +92,30 @@ class LLMRequest(_Contract):
     tools: tuple[ToolDefinition, ...] = ()
 
     @model_validator(mode="after")
-    def _starts_with_user(self) -> Self:
+    def _valid_history(self) -> Self:
+        # Checked here so a loop bug fails in unit tests, not as a 400 from the API (llm.md).
         if self.messages[0].role != "user":
             raise ValueError("the first message must be from the user")
+        # Our rule, not the APIs': the loop never sends a request that ends on an assistant turn.
+        if self.messages[-1].role != "user":
+            raise ValueError("the last message must be from the user")
+        # Anthropic and OpenAI both require every tool call to be answered in the very next
+        # message, and every tool result to answer a call from the message right before it.
+        for i, message in enumerate(self.messages):
+            previous = self.messages[i - 1].content if i > 0 else ()
+            calls = {b.id for b in previous if isinstance(b, ToolCall)}
+            for block in message.content:
+                if isinstance(block, ToolResult) and block.tool_call_id not in calls:
+                    raise ValueError(
+                        f"messages[{i}]: tool result {block.tool_call_id!r} matches no tool call "
+                        "in the previous message"
+                    )
+            answered = {b.tool_call_id for b in message.content if isinstance(b, ToolResult)}
+            if unanswered := sorted(calls - answered):
+                raise ValueError(
+                    f"messages[{i - 1}]: tool call {unanswered[0]!r} has no result in the next "
+                    "message"
+                )
         return self
 
 
