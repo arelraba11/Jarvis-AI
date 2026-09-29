@@ -10,7 +10,7 @@ Goals and open decisions: [design](../design.md).
 |---|---|---|---|---|
 | 0 | Dev environment | Tooling, CI and a repo skeleton everything else builds on | — | ✅ done |
 | 1 | Hebrew voice spike | Choose realtime speech-to-speech or a transcription→LLM→speech pipeline, within 3 days | [full](phase-1-voice-spike.md) | ⏭️ next |
-| 2 | Core skeleton (CLI) | Chat with Jarvis in Hebrew in the terminal through my own agent loop, with role-based models, cost tracking and tracing | [full](phase-2-core-cli.md) | — |
+| 2 | Core skeleton (CLI) | Chat with Jarvis in Hebrew in the terminal through my own agent loop, with role-based models, cost tracking and tracing | [full](phase-2-core-cli.md) | 🚧 in progress |
 | 3 | Gmail read | Ask questions about my real inbox from the CLI | [full](phase-3-gmail-read.md) | — |
 | 4 | Approvals + actions | Send email and manage meetings from the CLI, each action run only after I approve it | [stub](#phase-4--approvals--actions) | — |
 | 5 | API + Tauri app | The same brain behind an API, with chat and approval cards in a Mac app | [stub](#phase-5--api--tauri-app) | — |
