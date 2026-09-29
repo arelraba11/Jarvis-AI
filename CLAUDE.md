@@ -90,7 +90,7 @@ CI runs on Linux, so when Mac-only code arrives:
   changes to tooling/CI config.
 - Before merging a PR, confirm the PR head equals your local HEAD, and merge with --match-head-commit.
 - After opening or updating a PR and CI is green, run the pr-reviewer subagent
-  (`.claude/agents/pr-reviewer.md`) via @"pr-reviewer (agent)", passing only the PR number and the
+  (`.claude/agents/pr-reviewer.md`) via `@"pr-reviewer (agent)"`, passing only the PR number and the
   plan task number: no summary, no self-assessment.
 - Fix every CONFIRMED blocker or major finding in the same PR and re-run the reviewer. For findings
   you disagree with, say why.

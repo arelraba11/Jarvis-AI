@@ -41,6 +41,9 @@ logs/
 !.vscode/settings.json
 !.vscode/extensions.json
 
+# Claude Code subagent worktrees (isolation: worktree)
+.claude/worktrees/
+
 # App (Tauri / Node) — later
 node_modules/
 app/dist/

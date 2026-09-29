@@ -72,7 +72,10 @@ Defect patterns already found in this repo (probe for them in every new model or
 
 ## Steps
 
-1. Check out the PR head: `gh pr checkout <n>`, then `gh pr diff <n>` and `gh pr view <n>`.
+1. Check out the PR head detached: `gh pr checkout <n> --detach` (the PR branch is usually checked
+   out in the main checkout, so a plain checkout fails in this worktree). Confirm
+   `git rev-parse HEAD` equals `gh pr view <n> --json headRefOid -q .headRefOid`; if not, stop and
+   report it. Then `gh pr diff <n>` and `gh pr view <n>`.
 2. Read what the change must satisfy:
    - CLAUDE.md (working rules, architecture rules).
    - The task in docs/plan/ and the system docs it links in docs/systems/.
