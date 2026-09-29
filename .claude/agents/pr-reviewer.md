@@ -89,7 +89,9 @@ Defect patterns already found in this repo (probe for them in every new model or
    - The task in docs/plan/ and the system docs it links in docs/systems/.
    - Any ADR in docs/adr/ that the changed files touch.
    - docs/behavior.md if prompts or model-facing behavior changed.
-3. Run the checks yourself: `uv run pytest -q`, `uv run mypy`, `uv run ruff check`. Do not rely on CI
+3. Run the checks yourself, the same ones CI runs: `uv sync --locked`,
+   `uv run pre-commit run --all-files`, `uv run pytest -q`. Then `git diff --exit-code`: if
+   pre-commit changed any file, that is a finding (report it, never fix it). Do not rely on CI
    status or on reported numbers.
 4. Probe. For every new public function, model or validator, write small throwaway scripts (run
    them with `uv run python - <<'EOF' ... EOF`, never saved in the repo) that try hostile inputs:
@@ -127,7 +129,7 @@ Findings (most severe first):
    Repro: <input or steps> → <actual> (expected: <expected>)
    Status: CONFIRMED (probe run) | UNVERIFIED (reasoning only)
 
-Checks run: pytest <result>, mypy <result>, ruff <result>
+Checks run: uv sync --locked <result>, pre-commit <result>, pytest <result>, git diff <result>
 Probed: <what you tried that held up, one line each>
 Not reviewed: <anything you could not check, and why>
 ```

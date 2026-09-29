@@ -40,7 +40,7 @@ uv sync --locked                          # install exactly what uv.lock pins
 uv run pytest                             # all tests
 uv run pytest tests/test_smoke.py::test_package_imports   # single test
 uv run ruff check . && uv run ruff format --check .
-uv run mypy                               # strict; checks src/ and tests/
+uv run mypy                               # strict; checks src/, tests/ and .claude/hooks/
 uv run pre-commit run --all-files         # everything CI runs except pytest
 ```
 
@@ -90,8 +90,8 @@ CI runs on Linux, so when Mac-only code arrives:
   changes to tooling/CI config.
 - Before merging a PR, confirm the PR head equals your local HEAD, and merge with --match-head-commit.
 - After opening or updating a PR and CI is green, run the pr-reviewer subagent
-  (`.claude/agents/pr-reviewer.md`) via `@"pr-reviewer (agent)"`, passing only the PR number and the
-  plan task number: no summary, no self-assessment.
+  (`.claude/agents/pr-reviewer.md`), passing only the PR number and the plan task number: no
+  summary, no self-assessment.
 - Fix every CONFIRMED blocker or major finding in the same PR and re-run the reviewer. For findings
   you disagree with, say why.
 - Include the reviewer's final report verbatim in your report to the user. Its "Reviewed head" must
