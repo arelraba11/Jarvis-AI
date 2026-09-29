@@ -55,10 +55,10 @@ observability, CI and updates. The processes themselves are in
 ## Config keys
 
 - The `Settings` tree above, loaded by `jarvis.core.config.load_settings()`.
-- `user` (`UserSettings`): `id`, `name`, `timezone` (an IANA name, default `UTC`), `language`
+- `user` (`UserSettings`): `id` (non-empty), `name`, `timezone` (an IANA name, default `UTC`), `language`
   (default `he`), `week_start` (default `sunday`; used by `resolve_date`, see
-  [orchestrator](orchestrator.md#time-and-date-tools)), `default_account_id` (default none).
-- `budget` (`BudgetSettings`, [LLM](llm.md#config-keys)): `daily_cap_usd`.
+  [orchestrator](orchestrator.md#time-and-date-tools)), `default_account_id` (none or non-empty; default none).
+- `budget` (`BudgetSettings`, [LLM](llm.md#config-keys)): `daily_cap_usd` (finite, > 0).
 - Validation is strict: no type coercion (a quoted `"3"` is not a number), and unknown keys are
   errors. The error names the file and the dotted key.
 - Open question: key names beyond these are not specified yet.

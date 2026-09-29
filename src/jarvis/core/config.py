@@ -30,12 +30,12 @@ class _Section(BaseModel):
 
 
 class UserSettings(_Section):
-    id: str = "default"
+    id: str = Field(default="default", min_length=1)  # the user_id every store keys on
     name: str | None = None
     timezone: str = "UTC"
     language: str = "he"
     week_start: Weekday = "sunday"
-    default_account_id: str | None = None
+    default_account_id: str | None = Field(default=None, min_length=1)
 
     @field_validator("timezone")
     @classmethod
@@ -48,7 +48,8 @@ class UserSettings(_Section):
 
 
 class BudgetSettings(_Section):
-    daily_cap_usd: float = Field(default=3.0, gt=0)
+    # inf would silently disable the budget guard.
+    daily_cap_usd: float = Field(default=3.0, gt=0, allow_inf_nan=False)
 
 
 class Settings(_Section):

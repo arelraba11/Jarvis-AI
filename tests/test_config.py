@@ -68,6 +68,12 @@ def test_an_int_is_accepted_for_a_float_field(repo_defaults: Path) -> None:
         ("user:\n  timezone: Mars/Olympus\n", "user.timezone", "unknown timezone"),
         ("user:\n  week_start: sun\n", "user.week_start", "'sunday'"),
         ("user: [a, b]\n", "user", "valid dictionary"),
+        # inf/nan would silently disable the daily budget guard.
+        ("budget:\n  daily_cap_usd: .inf\n", "budget.daily_cap_usd", "finite number"),
+        ("budget:\n  daily_cap_usd: .nan\n", "budget.daily_cap_usd", "finite number"),
+        # user.id keys every store, so it can't be empty.
+        ('user:\n  id: ""\n', "user.id", "at least 1 character"),
+        ('user:\n  default_account_id: ""\n', "user.default_account_id", "at least 1 character"),
     ],
 )
 def test_invalid_local_yaml_fails_naming_file_and_key(
