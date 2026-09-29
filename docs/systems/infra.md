@@ -22,6 +22,16 @@ observability, CI and updates. The processes themselves are in
 ### Secrets
 
 - OAuth tokens and API keys live in the macOS Keychain (via `keyring`), never in code or env files.
+- **Keychain naming:** service `jarvis`, account = the secret's name (the provider name for an API
+  key, for example `anthropic`). To add or replace one by hand:
+  `security add-generic-password -s jarvis -a <name> -w` (it prompts for the value).
+- `SecretStore` (`jarvis.core.secret_store`): `get(name)`, `set(name, value)`, `delete(name)`.
+  `set` and `delete` are for OAuth tokens (Phase 3). A missing secret raises `SecretNotFoundError`,
+  whose message is the `security` command above ([behavior](../behavior.md) R3). Deleting a missing
+  secret is not an error.
+- A secret value never appears in a repr, a log line or an error message.
+- Tests never touch the real Keychain: an autouse fixture (`tests/conftest.py`) gives every test an
+  in-memory keyring backend. Linux CI has no keyring backend anyway.
 
 ### Storage
 
