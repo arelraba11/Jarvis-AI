@@ -92,6 +92,9 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
     - `weeks=2, weekday=thursday` when today is Friday: asserts the week-based date (2026-10-15
       for Friday 2026-10-02), not the "+14 days, then next Thursday" date (2026-10-22).
     - A non-default `week_start` changes the week-based result.
+    - `weeks=2` alone returns today + 14 days.
+    - `days` + `weeks` is rejected with a validation error, returned to the model as a tool error.
+    - `end_of_month` + `weekday` is rejected the same way.
     - A DST change in `Asia/Jerusalem`.
 11. **Cost tracking.** `UsageRecord` is computed from `Usage` and per-model prices in config;
     `CostLedger`; the per-run cost cap and `DailyBudgetGuard`.
