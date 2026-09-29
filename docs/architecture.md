@@ -135,3 +135,6 @@ Spike code backs the numbers in its ADR, which is why `spikes/` lives in the rep
 
 - **Where the voice session runs** (Phase 6): in the Tauri client or in `jarvis-core`. Until it is
   decided, voice goes through the API like every other client ([voice](systems/voice.md)).
+  Echo cancellation is an input to this decision. The options are browser AEC in the Tauri
+  webview or macOS Voice Processing I/O in Python; neither is tested yet
+  ([voice open questions](systems/voice.md#open-questions)).
