@@ -63,7 +63,10 @@ this ADR.
     default for accounts created on or after 2026-08-31 (a 400 on violation). So the system prompt
     holds no per-request values (no timestamps: time comes from `get_current_time`), the tool list
     is fixed for a session, and assistant turns, including `thinking` blocks, are passed back
-    unchanged. `Message` (task 2) must be able to carry those blocks opaquely.
+    unchanged. `Message` (task 2) must be able to carry those blocks opaquely. (Extended in task
+    5: the docs require the whole assistant turn back as returned, since a serializer that drops
+    empty fields or unknown block types edits the prefix. So assistant text and tool calls carry
+    the provider's `raw` block too, and unmodeled block types travel as `OpaqueBlock`.)
   - **Thinking blocks may be removed from the start, from the end, or all of them.** Earlier
     thinking blocks are not part of the checked prefix, so removing one does not change it. Only a
     gap in the middle fails: each block records the one before it, so removing a block between two

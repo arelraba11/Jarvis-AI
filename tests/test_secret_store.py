@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Callable
 
+import keyring
 import pytest
 
 from fakes.keyring_backend import InMemoryKeyring
@@ -107,3 +108,8 @@ def test_keyring_service_is_injectable(keyring_backend: InMemoryKeyring) -> None
 
 def test_fake_can_start_with_secrets() -> None:
     assert FakeSecretStore({"anthropic": VALUE}).get("anthropic") == VALUE
+
+
+def test_every_non_live_test_gets_the_in_memory_keyring() -> None:
+    # conftest's autouse fixture; only the live tests restore the real backend (CLAUDE.md).
+    assert isinstance(keyring.get_keyring(), InMemoryKeyring)

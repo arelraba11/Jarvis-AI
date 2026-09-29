@@ -7,3 +7,13 @@ budget:
 # Role -> provider and model. A provider name must be registered with the ModelRouter.
 models:
   planner: {provider: anthropic, model: claude-sonnet-5-5}
+
+# USD per million tokens, from https://platform.claude.com/docs/en/about-claude/pricing
+# (checked 2026-09-29). cache_write is the 5-minute rate: the Anthropic provider uses the
+# default 5-minute cache TTL.
+prices:
+  claude-sonnet-5-5:
+    input_per_mtok: 2.00
+    output_per_mtok: 10.00
+    cache_write_per_mtok: 2.50
+    cache_read_per_mtok: 0.20

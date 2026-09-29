@@ -94,7 +94,7 @@ core change, an extension point is missing.
 | Device (phone, watch) | A new client talking to the same API | Client code only |
 | Connector (messages, browser, files) | A module folder: `module.yaml` with tools, prompts, triggers and memory space | A new folder |
 | Tool | A function with a decorator in the tool registry, or an external MCP server | A tool file or a config line |
-| Model or provider, local or API | An implementation of the provider interface, and a role → model mapping | Config |
+| Model or provider, local or API | An implementation of the provider interface (`llm/*_provider.py`), registered in `composition.py`, and a role → model mapping | Config; a new provider also adds its module and one registration line |
 | Voice model | An implementation of the voice provider interface | Config |
 | Google account | Another OAuth, one row in the `accounts` table | Data only |
 | Notification rule | A line in the rules file: event, condition, channel | Config |
@@ -118,6 +118,7 @@ Python packages live under `src/jarvis/` (src layout, ADR-0001); the rest stay a
 src/jarvis/
   core/        API, orchestrator, approvals, memory, events
   llm/         providers, role mapping, voice providers
+  composition.py  the composition root: registers providers, builds the router
   modules/     google/ in the MVP; apple/, files/, messages/, browser/ later
   mac_agent/   Mac-dependent tools
 app/           Tauri and the TypeScript UI

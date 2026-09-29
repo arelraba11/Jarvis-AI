@@ -37,7 +37,7 @@ All tooling runs through uv (Python 3.13).
 
 ```bash
 uv sync --locked                          # install exactly what uv.lock pins
-uv run pytest                             # all tests
+uv run pytest                             # all tests except live API ones (JARVIS_LIVE=1 uv run pytest -m live)
 uv run pytest tests/test_smoke.py::test_package_imports   # single test
 uv run ruff check . && uv run ruff format --check .
 uv run mypy                               # strict; checks src/, tests/ and .claude/hooks/
@@ -80,7 +80,9 @@ CI runs on Linux, so when Mac-only code arrives:
   a macOS CI job once there is real Mac code).
 - Mark Mac-only tests `pytest.mark.skipif(sys.platform != "darwin", reason="macOS only")`.
 - `keyring` has no backend on Linux CI (`NoKeyringError`): tests must inject a fake backend, never
-  touch the real Keychain.
+  touch the real Keychain. The one exception: live API tests, which run only with `-m live` AND
+  `JARVIS_LIVE=1` and never in CI, restore the real macOS backend deliberately. The autouse
+  in-memory keyring fixture stays in force for every other test.
 
 ## Working rules
 

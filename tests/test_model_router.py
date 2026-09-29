@@ -10,11 +10,13 @@ class RecordingFactory:
     """A provider factory that builds a new FakeProvider on each call and remembers each one."""
 
     def __init__(self) -> None:
+        self.configs: list[RoleModelConfig] = []
         self.built: list[tuple[str, FakeProvider]] = []
 
-    def __call__(self, model: str) -> LLMProvider:
+    def __call__(self, config: RoleModelConfig) -> LLMProvider:
         provider = FakeProvider([])
-        self.built.append((model, provider))
+        self.configs.append(config)
+        self.built.append((config.model, provider))
         return provider
 
 
@@ -25,6 +27,14 @@ def test_a_configured_role_resolves_to_its_provider_built_for_its_model() -> Non
     )
     assert [model for model, _ in factory.built] == ["fake-large"]
     assert router.for_role(Role.PLANNER) is factory.built[0][1]
+
+
+def test_the_factory_gets_the_whole_role_config() -> None:
+    # max_tokens and effort reach the provider through its factory, not through the router.
+    factory = RecordingFactory()
+    config = RoleModelConfig(provider="fake", model="fake-large", max_tokens=2048, effort="low")
+    ModelRouter({Role.PLANNER: config}, {"fake": factory})
+    assert factory.configs == [config]
 
 
 def test_each_role_gets_the_provider_and_model_it_is_configured_with() -> None:
@@ -83,7 +93,7 @@ def test_a_factory_failure_names_the_role_and_provider() -> None:
     # In task 5 a missing Keychain key fails here, at startup; the message must say where.
     missing_key = LookupError("no API key in the Keychain")
 
-    def failing(model: str) -> LLMProvider:
+    def failing(config: RoleModelConfig) -> LLMProvider:
         raise missing_key
 
     with pytest.raises(

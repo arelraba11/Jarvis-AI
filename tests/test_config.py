@@ -7,12 +7,16 @@ from pydantic import ValidationError
 from jarvis.core.config import (
     CONFIG_DIR,
     ConfigError,
+    ModelPrices,
     RoleModelConfig,
     Settings,
     deep_merge,
     load_settings,
 )
 from jarvis.llm.contracts import Role
+
+# The price fields after input_per_mtok, for YAML test cases that vary input_per_mtok.
+PRICE_REST = "output_per_mtok: 1, cache_write_per_mtok: 1, cache_read_per_mtok: 1}\n"
 
 
 def write(config_dir: Path, name: str, text: str) -> None:
@@ -43,6 +47,23 @@ def test_repo_default_yaml_loads_without_local_yaml(repo_defaults: Path) -> None
     assert settings.models == {
         Role.PLANNER: RoleModelConfig(provider="anthropic", model="claude-sonnet-5-5")
     }
+
+
+def test_role_model_config_has_provider_neutral_defaults() -> None:
+    # Each provider maps these to its own API; see docs/systems/llm.md for why these values.
+    config = RoleModelConfig(provider="p", model="m")
+    assert config.max_tokens == 16_000
+    assert config.effort == "medium"
+
+
+def test_repo_default_yaml_has_the_planner_model_price(repo_defaults: Path) -> None:
+    # USD per million tokens, from Anthropic's pricing page (checked 2026-09-29).
+    assert load_settings(repo_defaults).prices["claude-sonnet-5-5"] == ModelPrices(
+        input_per_mtok=2.0,
+        output_per_mtok=10.0,
+        cache_write_per_mtok=2.5,
+        cache_read_per_mtok=0.2,
+    )
 
 
 def test_local_yaml_can_change_one_key_of_a_role_and_add_a_role(repo_defaults: Path) -> None:
@@ -104,9 +125,50 @@ def test_an_int_is_accepted_for_a_float_field(repo_defaults: Path) -> None:
         ('models:\n  writer: {provider: p, model: ""}\n', "models.writer.model", "at least 1"),
         ("models:\n  writer: {provider: p}\n", "models.writer.model", "Field required"),
         (
-            "models:\n  writer: {provider: p, model: m, effort: high}\n",
-            "models.writer.effort",
+            "models:\n  writer: {provider: p, model: m, temperature: 0.5}\n",
+            "models.writer.temperature",
             "Extra inputs are not permitted",
+        ),
+        (
+            "models:\n  writer: {provider: p, model: m, max_tokens: 0}\n",
+            "models.writer.max_tokens",
+            "greater than 0",
+        ),
+        (
+            'models:\n  writer: {provider: p, model: m, max_tokens: "16000"}\n',
+            "models.writer.max_tokens",
+            "valid integer",
+        ),
+        (
+            "models:\n  writer: {provider: p, model: m, max_tokens: 1.5}\n",
+            "models.writer.max_tokens",
+            "valid integer",
+        ),
+        (
+            "models:\n  writer: {provider: p, model: m, max_tokens: true}\n",
+            "models.writer.max_tokens",
+            "valid integer",
+        ),
+        (
+            "models:\n  writer: {provider: p, model: m, effort: extreme}\n",
+            "models.writer.effort",
+            "'medium'",
+        ),
+        (
+            "prices:\n  m: {input_per_mtok: -1, " + PRICE_REST,
+            "prices.m.input_per_mtok",
+            "greater than or equal to 0",
+        ),
+        (
+            "prices:\n  m: {input_per_mtok: .inf, " + PRICE_REST,
+            "prices.m.input_per_mtok",
+            "finite number",
+        ),
+        ("prices:\n  m: {input_per_mtok: 1}\n", "prices.m.output_per_mtok", "Field required"),
+        (
+            'prices:\n  "": {input_per_mtok: 1, ' + PRICE_REST,
+            "prices..[key]",
+            "at least 1 character",
         ),
     ],
 )

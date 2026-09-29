@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "anthropic>=1.9.0",
     "keyring>=25.7.0",
     "pydantic>=2.13.5",
     "pyyaml>=6.0.3",
@@ -52,4 +53,9 @@ exclude = ["^spikes/"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # Spikes have no tests and are never collected, even by a bare `pytest .`.
-addopts = "-ra --ignore=spikes"
+# Live tests call real APIs with Keychain keys: never by default or in CI; `pytest -m live` runs
+# them (a later -m replaces this one).
+addopts = "-ra --ignore=spikes -m 'not live'"
+markers = [
+    "live: calls a real API with a Keychain key; run by hand: `JARVIS_LIVE=1 uv run pytest -m live`",
+]
