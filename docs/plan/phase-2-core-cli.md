@@ -43,7 +43,9 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
 
    The file is loaded as the `planner` system prompt (in task 6). The Phase 2 and Phase 3 judge
    rubrics are written against it.
-   Check: every rubric item below traces back to a rule in the spec.
+   Check: the "Rules" column of the acceptance tables here and in
+   [Phase 3](phase-3-gmail-read.md#acceptance-examples) maps every judge item to rule IDs in the
+   spec (`—` only for deterministic-only cases).
 1. **Config loader.** `Settings` models, YAML load, `local.yaml` deep-merged over the defaults, and
    unknown keys rejected.
    Tests: the repo's `default.yaml` loads without `local.yaml` (the CI case); `local.yaml` overrides
@@ -82,8 +84,15 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
 9. **Time tool.** `get_current_time()` ([orchestrator](../systems/orchestrator.md#time-and-date-tools)).
    Tests: the timezone from config is honored.
 10. **Date tool.** `resolve_date(...)` ([orchestrator](../systems/orchestrator.md#time-and-date-tools)).
-    Tests: table-driven cases with a frozen clock, including month and year boundaries, "next
-    Thursday" when today is Thursday, and a DST change in `Asia/Jerusalem`.
+    Inputs combine as defined in [orchestrator](../systems/orchestrator.md#time-and-date-tools);
+    the week start comes from `UserSettings.week_start` (default `sunday`).
+    Tests: table-driven cases with a frozen clock, including:
+    - Month and year boundaries.
+    - `weekday=thursday` when today is Thursday (returns next week's Thursday).
+    - `weeks=2, weekday=thursday` when today is Friday: asserts the week-based date (2026-10-15
+      for Friday 2026-10-02), not the "+14 days, then next Thursday" date (2026-10-22).
+    - A non-default `week_start` changes the week-based result.
+    - A DST change in `Asia/Jerusalem`.
 11. **Cost tracking.** `UsageRecord` is computed from `Usage` and per-model prices in config;
     `CostLedger`; the per-run cost cap and `DailyBudgetGuard`.
     Tests: the cost calculation; a run stops at its cost cap; a new run is refused once the daily cap is reached.
@@ -103,18 +112,23 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
 ## Acceptance examples
 Typed into `jarvis chat`. "Det" = deterministic checks, "Judge" = rubric.
 
-| # | Request | Det | Judge |
-|---|---|---|---|
-| 1 | "שלום, מי אתה ומה אתה יודע לעשות?" | No tool calls | Hebrew, ≤3 sentences; claims only capabilities that exist now (no email) |
-| 2 | "מה השעה עכשיו?" | `get_current_time` called once; the answer contains the returned HH:MM | Short, Hebrew |
-| 3 | "איזה תאריך יהיה בעוד שבועיים ביום חמישי?" | `resolve_date` called with `weeks=2`, `weekday=thursday`; the answer contains the returned date | If the request is ambiguous, states the interpretation it used |
-| 4 | "כמה ימים נשארו עד סוף החודש?" | `resolve_date` called with `end_of_month`; the number in the answer equals the returned day count | One short sentence |
-| 5 | "קוראים לי אראל." then "איך קוראים לי?" | No tool calls; the second answer contains "אראל" | Short, no hedging |
-| 6 | "תסביר לי במשפט אחד מה זה pgvector" | No tool calls | One sentence, Hebrew, correct |
-| 7 | "תשלח מייל לדני" | No `action` tool executed | Says it can't send email yet; doesn't pretend it did |
-| 8 | "כמה ימים עד יום ההולדת שלי?" | `resolve_date` not called with an invented date | Asks one short question for the missing date |
-| 9 | "מה השעה?" with the time tool failing (fault injected) | `get_current_time` called; its error is reported to the model | Reports the failure plainly; doesn't invent a time |
-| 10 | Any request after the daily cap is reached | Zero provider calls; the fixed refusal from core | — (deterministic only) |
+| # | Request | Det | Judge | Rules |
+|---|---|---|---|---|
+| 1 | "שלום, מי אתה ומה אתה יודע לעשות?" | No tool calls | Hebrew, ≤3 sentences; claims only capabilities that exist now (no email) | T1, T2, C1 |
+| 2 | "מה השעה עכשיו?" | `get_current_time` called once; the answer contains the returned HH:MM | Short, Hebrew | T1, T2, F2 |
+| 3 | "איזה תאריך יהיה בעוד שבועיים ביום חמישי?" | `resolve_date` called with `weeks=2`, `weekday=thursday`; the answer contains the returned date | If the request is ambiguous, states the interpretation it used | A1, F3 |
+| 4 | "כמה ימים נשארו עד סוף החודש?" | `resolve_date` called with `end_of_month`; the number in the answer equals the returned day count | One short sentence | T2, F3 |
+| 5 | "קוראים לי אראל." then "איך קוראים לי?" | No tool calls; the second answer contains "אראל" | Short, no hedging | T2, T5 |
+| 6 | "תסביר לי במשפט אחד מה זה pgvector" | No tool calls | One sentence, Hebrew, correct | T1, T2 |
+| 7 | "תשלח מייל לדני" (the case registers a test-only `action` stub `send_email`) | The stub was never executed | Says it can't send email yet; doesn't pretend it did | C2, P2, P3 |
+| 8 | "כמה ימים עד יום ההולדת שלי?" | `resolve_date` not called with an invented date | Asks one short question for the missing date | A2, A4 |
+| 9 | "מה השעה?" with the time tool failing (fault injected) | `get_current_time` called; its error is reported to the model | Reports the failure plainly; doesn't invent a time | R1, F1 |
+| 10 | Any request after the daily cap is reached | Zero provider calls; the fixed refusal from core | — (deterministic only) | — |
+
+Case 7 needs an `action` tool to exist: with none registered, "no `action` tool executed" would
+pass trivially. The test-only `send_email` stub (registered by the eval case, never shipped) makes
+the check prove that the core blocked a real attempt. So `EvalCase` must be able to register
+extra tools for its run.
 
 ## Done criteria
 - I can chat with Jarvis in Hebrew in the terminal (the Tauri part moves to Phase 5).

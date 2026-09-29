@@ -48,13 +48,15 @@ observability, CI and updates. The processes themselves are in
 | Contract | Kind | Definition |
 |---|---|---|
 | `Settings` | settings | Root config model; includes `UserSettings`, `BudgetSettings` ([LLM](llm.md)), `AgentLimits` ([orchestrator](orchestrator.md)), `RoleModelConfig` ([LLM](llm.md)) |
-| `UserSettings` | settings | Personal values, including `timezone` and `default_account_id` |
+| `UserSettings` | settings | Personal values, including `timezone`, `week_start` and `default_account_id` |
 | `SecretStore` | Protocol | Keyring implementation, and an in-memory fake for tests |
 | `Tracer` | Protocol | Langfuse implementation and a no-op implementation |
 
 ## Config keys
 
-- The `Settings` tree above; `UserSettings.timezone`, `UserSettings.default_account_id`.
+- The `Settings` tree above; `UserSettings.timezone`, `UserSettings.week_start` (default `sunday`;
+  used by `resolve_date`, see [orchestrator](orchestrator.md#time-and-date-tools)),
+  `UserSettings.default_account_id`.
 - Open question: key names beyond these are not specified yet.
 
 ## Decisions

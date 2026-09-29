@@ -32,7 +32,7 @@ Per-role model-choice eval sets are described in [LLM](llm.md).
 
 | Contract | Kind | Definition |
 |---|---|---|
-| `EvalCase` | model | Request, deterministic checks, judge rubric |
+| `EvalCase` | model | Request, optional setup (test-only tools, injected faults), deterministic checks, judge rubric |
 | `EvalResult` | model | The outcome of one case |
 | `Grader` | class | Deterministic checks, then the LLM judge |
 
