@@ -80,7 +80,9 @@ CI runs on Linux, so when Mac-only code arrives:
   a macOS CI job once there is real Mac code).
 - Mark Mac-only tests `pytest.mark.skipif(sys.platform != "darwin", reason="macOS only")`.
 - `keyring` has no backend on Linux CI (`NoKeyringError`): tests must inject a fake backend, never
-  touch the real Keychain.
+  touch the real Keychain. The one exception: live API tests, which run only with `-m live` AND
+  `JARVIS_LIVE=1` and never in CI, restore the real macOS backend deliberately. The autouse
+  in-memory keyring fixture stays in force for every other test.
 
 ## Working rules
 

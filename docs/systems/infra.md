@@ -34,7 +34,9 @@ observability, CI and updates. The processes themselves are in
   an empty stored API key would otherwise pass as valid and fail only later, as a 401.
 - A secret value never appears in a repr, a log line or an error message.
 - Tests never touch the real Keychain: an autouse fixture (`tests/conftest.py`) gives every test an
-  in-memory keyring backend. Linux CI has no keyring backend anyway.
+  in-memory keyring backend. Linux CI has no keyring backend anyway. The one exception is the live
+  API tests (`-m live` AND `JARVIS_LIVE=1`, never in CI), which restore the real macOS backend
+  deliberately to read the API key.
 
 ### Storage
 

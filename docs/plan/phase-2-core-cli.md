@@ -93,6 +93,14 @@ The order is chosen so `jarvis chat` works at task 7; everything after that make
      names it; the provider never crashes on it or guesses a meaning.
 
    Tests: mapping against recorded response fixtures, with no network; a manual smoke test on the real API.
+   (Done with fixtures built from the documented response shapes, not recorded: see task 5a.)
+5a. **Recorded Anthropic fixtures** (follow-up to task 5). Record real responses from the live
+    smoke run (`JARVIS_LIVE=1 uv run pytest -m live`): text with thinking, a tool call, and the
+    prefix-mismatch 400. Redact the API key, request ids tied to the account, and anything
+    personal, then replace the hand-built fixtures in `tests/fixtures/anthropic/` whose shapes
+    they cover. A shape the live run can't produce on demand (a refusal, an unknown stop reason)
+    stays hand-built and marked as such.
+    Tests: the existing mapping tests pass unchanged against the recorded fixtures.
 6. **Minimal loop.** `Orchestrator` with no tools yet: system prompt from `docs/behavior.md` +
    history + request → the model → the answer.
    Tests with `FakeProvider`: the answer is returned; the system prompt comes from the spec file.

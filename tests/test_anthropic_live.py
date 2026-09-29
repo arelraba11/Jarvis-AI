@@ -14,6 +14,8 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
+import keyring
+import keyring.core
 import pytest
 
 from jarvis.core.config import load_settings
@@ -43,8 +45,15 @@ SYSTEM = (Path(__file__).parents[1] / "docs" / "behavior.md").read_text(encoding
 
 @pytest.fixture(autouse=True)
 def keyring_backend() -> Iterator[None]:
-    """Overrides conftest's in-memory keyring: these tests need the real Keychain key."""
+    """Overrides conftest's in-memory keyring and restores the real macOS backend, on purpose.
+
+    The one allowed exception to "tests never touch the real Keychain" (CLAUDE.md): these tests
+    run only with `-m live` AND JARVIS_LIVE=1, never in CI. Every other test keeps the fake.
+    """
+    previous = keyring.get_keyring()
+    keyring.set_keyring(keyring.core.load_keyring("keyring.backends.macOS.Keyring"))
     yield
+    keyring.set_keyring(previous)
 
 
 @pytest.fixture
