@@ -46,9 +46,9 @@ run locally on the M4 Pro, the rest through APIs.
 ## Config keys
 
 - `RoleModelConfig`: role → provider and model.
-- `BudgetSettings`: the temporary daily cap.
+- `BudgetSettings` (`budget` in config): `daily_cap_usd`, the temporary daily cap (default 3.0, must be > 0).
 - Per-model prices, since anything changeable without code is config.
-- Open question: exact key names are not specified yet.
+- Open question: key names for `RoleModelConfig` and prices are not specified yet.
 
 ## Decisions
 
